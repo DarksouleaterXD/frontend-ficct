@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { login } from "@/lib/api";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,23 +15,23 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Aquí irá tu petición al backend
-      const response = await fetch("http://localhost:8000/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const response = await login(email, password);
 
-      if (!response.ok) {
-        throw new Error("Credenciales inválidas");
+      if (response.status !== 200 && response.status !== 201) {
+        throw new Error(response.error || response.message || "Credenciales inválidas");
       }
 
-      const data = await response.json();
       // Guardar token y redirigir
-      localStorage.setItem("token", data.token);
-      window.location.href = "/private/admin";
+      if (response.token) {
+        localStorage.setItem("token", response.token);
+        // Guardar datos del usuario si los devuelve el backend
+        if (response.data) {
+          localStorage.setItem("user", JSON.stringify(response.data));
+        }
+        window.location.href = "/private/admin";
+      } else {
+        throw new Error("No se recibió token de autenticación");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al iniciar sesión");
     } finally {
