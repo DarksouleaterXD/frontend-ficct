@@ -17,17 +17,12 @@ export default function Login() {
     try {
       const response = await login(email, password);
 
-      if (response.status !== 200 && response.status !== 201) {
-        throw new Error(response.error || response.message || "Credenciales inválidas");
+      if (!response.success) {
+        throw new Error(response.message || response.error || "Credenciales inválidas");
       }
 
-      // Guardar token y redirigir
-      if (response.token) {
-        localStorage.setItem("token", response.token);
-        // Guardar datos del usuario si los devuelve el backend
-        if (response.data) {
-          localStorage.setItem("user", JSON.stringify(response.data));
-        }
+      if (response.data?.token) {
+        // El token ya fue guardado en la función login
         window.location.href = "/private/admin";
       } else {
         throw new Error("No se recibió token de autenticación");

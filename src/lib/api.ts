@@ -1,14 +1,14 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
-interface ApiResponse<T> {
+interface ApiResponse<T = Record<string, unknown>> {
+  success?: boolean;
   data?: T;
   message?: string;
   error?: string;
-  token?: string;
-  status: number;
+  errors?: Record<string, string[]>;
 }
 
-export async function apiCall<T>(
+export async function apiCall<T = Record<string, unknown>>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
@@ -43,30 +43,52 @@ export async function apiCall<T>(
     const response = await fetch(url, mergedOptions);
     const data = await response.json();
 
-    return {
-      ...data,
-      status: response.status,
-    };
+    return data;
   } catch (error) {
     console.error("API Error:", error);
     return {
+      success: false,
       error: "Error de conexión con el servidor",
-      status: 0,
+      message: "No se pudo conectar al servidor",
     };
   }
 }
 
+interface UserData {
+  user: Record<string, unknown>;
+  token: string;
+  rol: string;
+  is_admin: boolean;
+}
+
 // Función específica para login
 export async function login(email: string, password: string) {
-  return apiCall("/login", {
+  const response = await apiCall<UserData>("/login", {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
+
+  // Si el login es exitoso, guardar el token
+  if (response.success && response.data?.token) {
+    localStorage.setItem("token", response.data.token);
+    localStorage.setItem("user", JSON.stringify(response.data.user));
+    localStorage.setItem("rol", response.data.rol);
+  }
+
+  return response;
 }
 
 // Función específica para logout
 export async function logout() {
-  return apiCall("/logout", {
+  const response = await apiCall("/logout", {
     method: "POST",
   });
+
+  if (response.success) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("rol");
+  }
+
+  return response;
 }
