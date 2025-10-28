@@ -2,13 +2,20 @@
 
 export default function GestionAcademicaPage() {
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <h1 style={{ fontSize: "30px", fontWeight: "bold", color: "#1f2937", margin: 0 }}>
         Gestión Académica
       </h1>
 
-      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-8 text-center">
-        <p className="text-slate-600 dark:text-slate-400">
+      <div style={{
+        backgroundColor: "#ffffff",
+        borderRadius: "0.75rem",
+        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+        border: "1px solid #e5e7eb",
+        padding: "2rem",
+        textAlign: "center"
+      }}>
+        <p style={{ color: "#6b7280", margin: 0 }}>
           Módulo de Gestión Académica - En desarrollo
         </p>
       </div>

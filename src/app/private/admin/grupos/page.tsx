@@ -2,18 +2,37 @@
 
 export default function GruposPage() {
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <h1 style={{ fontSize: "30px", fontWeight: "bold", color: "#1f2937", margin: 0 }}>
           Gestión de Grupos
         </h1>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg">
+        <button style={{
+          backgroundColor: "#3b82f6",
+          color: "white",
+          padding: "0.5rem 1rem",
+          borderRadius: "0.5rem",
+          border: "none",
+          cursor: "pointer",
+          fontWeight: "600",
+          transition: "background-color 0.3s ease"
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#1e40af"}
+        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#3b82f6"}
+        >
           Nuevo Grupo
         </button>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-8 text-center">
-        <p className="text-slate-600 dark:text-slate-400">
+      <div style={{
+        backgroundColor: "#ffffff",
+        borderRadius: "0.75rem",
+        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+        border: "1px solid #e5e7eb",
+        padding: "2rem",
+        textAlign: "center"
+      }}>
+        <p style={{ color: "#6b7280", margin: 0 }}>
           Módulo de Grupos - En desarrollo
         </p>
       </div>

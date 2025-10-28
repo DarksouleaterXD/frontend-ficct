@@ -9,6 +9,11 @@ const eslintConfig = defineConfig([
     rules: {
       "react-hooks/exhaustive-deps": "warn",
     },
+    settings: {
+      css: {
+        ignoreAtRules: ["tailwind", "apply", "layer"],
+      },
+    },
   },
   // Override default ignores of eslint-config-next.
   globalIgnores([

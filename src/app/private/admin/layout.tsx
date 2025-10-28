@@ -6,10 +6,10 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen bg-slate-100 dark:bg-slate-950">
+    <div style={{ display: "flex", minHeight: "100vh", backgroundColor: "#f9fafb" }}>
       <Sidebar />
-      <main className="flex-1 p-4 md:p-8 overflow-auto">
-        <div className="max-w-7xl mx-auto">
+      <main style={{ flex: 1, padding: "2rem", overflow: "auto" }}>
+        <div style={{ maxWidth: "80rem", margin: "0 auto" }}>
           {children}
         </div>
       </main>

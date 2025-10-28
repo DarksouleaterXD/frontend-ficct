@@ -3,63 +3,45 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import {
+  LayoutDashboard,
+  BookOpen,
+  Clock,
+  Building2,
+  Book,
+  Users,
+  Award,
+  Users2,
+  CheckSquare,
+  ClipboardList,
+  Power,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 interface NavItem {
   label: string;
   href: string;
-  icon: string;
-  subItems?: NavItem[];
+  icon: React.ReactNode;
 }
-
-const navItems: NavItem[] = [
-  { label: "Dashboard", href: "/private/admin", icon: "📊" },
-  { label: "Gestión Académica", href: "/private/admin/gestion-academica", icon: "🎓" },
-  {
-    label: "Horarios",
-    href: "/private/admin/horarios",
-    icon: "⏰",
-  },
-  {
-    label: "Aulas",
-    href: "/private/admin/aulas",
-    icon: "🏫",
-  },
-  {
-    label: "Materias",
-    href: "/private/admin/materias",
-    icon: "📚",
-  },
-  {
-    label: "Grupos",
-    href: "/private/admin/grupos",
-    icon: "👥",
-  },
-  {
-    label: "Carreras",
-    href: "/private/admin/carreras",
-    icon: "🎯",
-  },
-  {
-    label: "Docentes",
-    href: "/private/admin/docentes",
-    icon: "👨‍🏫",
-  },
-  {
-    label: "Asistencia",
-    href: "/private/admin/asistencia",
-    icon: "✅",
-  },
-  {
-    label: "Bitácora",
-    href: "/private/admin/bitacora",
-    icon: "📋",
-  },
-];
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
+
+  const navItems: NavItem[] = [
+    { label: "Dashboard", href: "/private/admin", icon: <LayoutDashboard size={20} /> },
+    { label: "Gestión Académica", href: "/private/admin/gestion-academica", icon: <BookOpen size={20} /> },
+    { label: "Horarios", href: "/private/admin/horarios", icon: <Clock size={20} /> },
+    { label: "Aulas", href: "/private/admin/aulas", icon: <Building2 size={20} /> },
+    { label: "Materias", href: "/private/admin/materias", icon: <Book size={20} /> },
+    { label: "Grupos", href: "/private/admin/grupos", icon: <Users size={20} /> },
+    { label: "Carreras", href: "/private/admin/carreras", icon: <Award size={20} /> },
+    { label: "Docentes", href: "/private/admin/docentes", icon: <Users2 size={20} /> },
+    { label: "Asistencia", href: "/private/admin/asistencia", icon: <CheckSquare size={20} /> },
+    { label: "Bitácora", href: "/private/admin/bitacora", icon: <ClipboardList size={20} /> },
+  ];
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -77,50 +59,111 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Overlay para móvil */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 md:hidden z-40"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-screen bg-gradient-to-b from-blue-900 to-blue-800 text-white transition-all duration-300 z-50 ${
-          isOpen ? "w-64" : "w-20"
-        } md:relative md:translate-x-0 ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
+        style={{
+          width: isOpen ? "256px" : "80px",
+          backgroundColor: "#ffffff",
+          color: "#1f2937",
+          transition: "width 0.3s ease",
+          display: "flex",
+          flexDirection: "column",
+          height: "100vh",
+          borderRight: "1px solid #e5e7eb",
+          position: "relative",
+          zIndex: 50,
+        }}
       >
         {/* Header del Sidebar */}
-        <div className="flex items-center justify-between p-4 border-b border-blue-700">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "1rem",
+            borderBottom: "1px solid #e5e7eb",
+          }}
+        >
           {isOpen && (
             <div>
-              <h1 className="text-xl font-bold">FICCT</h1>
-              <p className="text-xs text-blue-200">Sistema Académico</p>
+              <h1 style={{ fontSize: "18px", fontWeight: "bold", color: "#1f2937", margin: 0 }}>
+                FICCT
+              </h1>
+              <p style={{ fontSize: "12px", color: "#6b7280", margin: "0.25rem 0 0 0" }}>
+                Sistema Académico
+              </p>
             </div>
           )}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="hidden md:flex p-2 hover:bg-blue-700 rounded-lg transition"
+            style={{
+              padding: "0.5rem",
+              backgroundColor: "#f3f4f6",
+              border: "1px solid #e5e7eb",
+              color: "#374151",
+              cursor: "pointer",
+              borderRadius: "0.5rem",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: "32px",
+              height: "32px",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#e5e7eb";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "#f3f4f6";
+            }}
           >
-            {isOpen ? "◀" : "▶"}
+            {isOpen ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
           </button>
         </div>
 
         {/* Navegación */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+        <nav
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "1rem",
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.5rem",
+          }}
+        >
           {navItems.map((item) => (
-            <Link key={item.href} href={item.href}>
+            <Link key={item.href} href={item.href} style={{ textDecoration: "none" }}>
               <div
-                className={`flex items-center gap-4 px-4 py-3 rounded-lg transition-all ${
-                  isActive(item.href)
-                    ? "bg-blue-600 shadow-lg"
-                    : "hover:bg-blue-700"
-                }`}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "1rem",
+                  padding: "0.75rem 1rem",
+                  borderRadius: "0.5rem",
+                  transition: "all 0.3s ease",
+                  backgroundColor: isActive(item.href) ? "#dbeafe" : "transparent",
+                  color: isActive(item.href) ? "#1e40af" : "#6b7280",
+                  cursor: "pointer",
+                  borderLeft: isActive(item.href) ? "4px solid #3b82f6" : "4px solid transparent",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isActive(item.href)) {
+                    e.currentTarget.style.backgroundColor = "#f3f4f6";
+                    e.currentTarget.style.color = "#374151";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isActive(item.href)) {
+                    e.currentTarget.style.backgroundColor = "transparent";
+                    e.currentTarget.style.color = "#6b7280";
+                  }
+                }}
               >
-                <span className="text-xl min-w-max">{item.icon}</span>
+                <div style={{ display: "flex", alignItems: "center", minWidth: "24px", color: isActive(item.href) ? "#3b82f6" : "inherit" }}>
+                  {item.icon}
+                </div>
                 {isOpen && (
-                  <span className="font-medium text-sm truncate">
+                  <span style={{ fontSize: "14px", fontWeight: isActive(item.href) ? "600" : "500", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                     {item.label}
                   </span>
                 )}
@@ -130,24 +173,45 @@ export default function Sidebar() {
         </nav>
 
         {/* Footer del Sidebar */}
-        <div className="border-t border-blue-700 p-4 space-y-2">
+        <div
+          style={{
+            borderTop: "1px solid #e5e7eb",
+            padding: "1rem",
+          }}
+        >
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-4 px-4 py-3 rounded-lg hover:bg-red-600 transition-all"
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: "1rem",
+              padding: "0.75rem 1rem",
+              borderRadius: "0.5rem",
+              backgroundColor: "#fef2f2",
+              color: "#991b1b",
+              border: "1px solid #e5e7eb",
+              cursor: "pointer",
+              transition: "all 0.3s ease",
+              fontSize: "14px",
+              fontWeight: "500",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = "#fee2e2";
+              e.currentTarget.style.borderColor = "#fca5a5";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = "#fef2f2";
+              e.currentTarget.style.borderColor = "#e5e7eb";
+            }}
           >
-            <span className="text-xl min-w-max">🚪</span>
-            {isOpen && <span className="font-medium text-sm">Cerrar Sesión</span>}
+            <div style={{ display: "flex", alignItems: "center", minWidth: "24px" }}>
+              <Power size={20} />
+            </div>
+            {isOpen && <span>Cerrar Sesión</span>}
           </button>
         </div>
       </aside>
-
-      {/* Botón toggle para móvil */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-6 right-6 md:hidden z-40 bg-blue-600 text-white p-3 rounded-full shadow-lg"
-      >
-        ☰
-      </button>
     </>
   );
 }

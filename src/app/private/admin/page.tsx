@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { Clock, Building2, Book, Users2 } from "lucide-react";
 
 interface UserData {
   name?: string;
@@ -9,111 +10,132 @@ interface UserData {
 }
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<UserData | null>(null);
-  const [rol, setRol] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Solo ejecutar en el cliente
+  const [user] = useState<UserData | null>(() => {
     if (typeof window !== "undefined") {
       const userData = localStorage.getItem("user");
-      const userRol = localStorage.getItem("rol");
-      
       if (userData) {
         try {
-          setUser(JSON.parse(userData));
+          return JSON.parse(userData);
         } catch {
-          setUser(null);
+          return null;
         }
       }
-      
-      if (userRol) {
-        setRol(userRol);
-      }
     }
-  }, []);
+    return null;
+  });
+
+  const [rol] = useState<string | null>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("rol");
+    }
+    return null;
+  });
 
   return (
-    <div className="space-y-8">
+    <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
       {/* Header */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-6 border-l-4 border-blue-600">
-        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
+      <div style={{ 
+        backgroundColor: "#ffffff", 
+        borderRadius: "0.75rem", 
+        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)", 
+        border: "1px solid #e5e7eb",
+        padding: "1.5rem", 
+        borderLeft: "4px solid #3b82f6"
+      }}>
+        <h1 style={{ fontSize: "30px", fontWeight: "bold", color: "#1f2937", marginBottom: "0.5rem", margin: 0 }}>
           Bienvenido al Dashboard
         </h1>
         {user && (
           <div>
-            <p className="text-slate-600 dark:text-slate-400">
-              Hola, <span className="font-semibold text-blue-600">{user.name}</span>
+            <p style={{ color: "#6b7280", margin: 0 }}>
+              Hola, <span style={{ fontWeight: "600", color: "#3b82f6" }}>{user.name}</span>
             </p>
-            <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
-              Rol: <span className="font-semibold capitalize">{rol}</span>
+            <p style={{ fontSize: "14px", color: "#9ca3af", marginTop: "0.5rem", margin: 0 }}>
+              Rol: <span style={{ fontWeight: "600", color: "#374151" }}>{rol}</span>
             </p>
           </div>
         )}
       </div>
 
       {/* Estadísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+        <div style={{ backgroundColor: "#ffffff", borderRadius: "0.75rem", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)", border: "1px solid #e5e7eb", padding: "1.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
-              <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">
+              <p style={{ color: "#6b7280", fontSize: "14px", fontWeight: "500", margin: 0 }}>
                 Horarios
               </p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-2">
+              <p style={{ fontSize: "24px", fontWeight: "bold", color: "#1f2937", marginTop: "0.5rem", margin: 0 }}>
                 0
               </p>
             </div>
-            <div className="text-4xl opacity-20">⏰</div>
+            <div style={{ color: "#3b82f6", opacity: 0.3 }}>
+              <Clock size={36} />
+            </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
+        <div style={{ backgroundColor: "#ffffff", borderRadius: "0.75rem", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)", border: "1px solid #e5e7eb", padding: "1.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
-              <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">
+              <p style={{ color: "#6b7280", fontSize: "14px", fontWeight: "500", margin: 0 }}>
                 Aulas
               </p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-2">
+              <p style={{ fontSize: "24px", fontWeight: "bold", color: "#1f2937", marginTop: "0.5rem", margin: 0 }}>
                 0
               </p>
             </div>
-            <div className="text-4xl opacity-20">🏫</div>
+            <div style={{ color: "#3b82f6", opacity: 0.3 }}>
+              <Building2 size={36} />
+            </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
+        <div style={{ backgroundColor: "#ffffff", borderRadius: "0.75rem", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)", border: "1px solid #e5e7eb", padding: "1.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
-              <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">
+              <p style={{ color: "#6b7280", fontSize: "14px", fontWeight: "500", margin: 0 }}>
                 Materias
               </p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-2">
+              <p style={{ fontSize: "24px", fontWeight: "bold", color: "#1f2937", marginTop: "0.5rem", margin: 0 }}>
                 0
               </p>
             </div>
-            <div className="text-4xl opacity-20">📚</div>
+            <div style={{ color: "#3b82f6", opacity: 0.3 }}>
+              <Book size={36} />
+            </div>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 rounded-lg shadow-md p-6">
-          <div className="flex items-center justify-between">
+        <div style={{ backgroundColor: "#ffffff", borderRadius: "0.75rem", boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)", border: "1px solid #e5e7eb", padding: "1.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div>
-              <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">
+              <p style={{ color: "#6b7280", fontSize: "14px", fontWeight: "500", margin: 0 }}>
                 Docentes
               </p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white mt-2">
+              <p style={{ fontSize: "24px", fontWeight: "bold", color: "#1f2937", marginTop: "0.5rem", margin: 0 }}>
                 0
               </p>
             </div>
-            <div className="text-4xl opacity-20">👨‍🏫</div>
+            <div style={{ color: "#3b82f6", opacity: 0.3 }}>
+              <Users2 size={36} />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Bienvenida */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg shadow-md p-8 text-white">
-        <h2 className="text-2xl font-bold mb-2">Sistema de Gestión Académica</h2>
-        <p className="text-blue-100">
+      <div style={{ 
+        background: "linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%)", 
+        borderRadius: "0.75rem", 
+        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)", 
+        padding: "2rem", 
+        color: "#ffffff"
+      }}>
+        <h2 style={{ fontSize: "24px", fontWeight: "bold", marginBottom: "0.5rem", margin: 0 }}>
+          Sistema de Gestión Académica
+        </h2>
+        <p style={{ color: "#dbeafe", margin: "0.5rem 0 0 0" }}>
           Utiliza el menú lateral para acceder a los diferentes módulos del sistema. 
           Gestiona horarios, aulas, materias, grupos, carreras, docentes, asistencia y más.
         </p>
