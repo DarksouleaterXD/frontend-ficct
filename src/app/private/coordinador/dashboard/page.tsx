@@ -68,31 +68,30 @@ export default function DashboardPage() {
   const [selectedCarrera, setSelectedCarrera] = useState("");
 
   // Cargar catálogos
-  useEffect(() => {
-    const fetchCatalogos = async () => {
-      const token = localStorage.getItem("token");
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/dashboard/catalogos`,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setPeriodos(data.data?.periodos || []);
-          setCarreras(data.data?.carreras || []);
+  const fetchCatalogos = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/dashboard/catalogos`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setPeriodos(data.data?.periodos || []);
+        setCarreras(data.data?.carreras || []);
 
-          // Seleccionar período vigente por defecto
+        // Seleccionar período vigente por defecto si no hay uno seleccionado
+        if (!selectedPeriodo) {
           const vigente = data.data?.periodos?.find((p: Periodo) => p.vigente);
           if (vigente) setSelectedPeriodo(String(vigente.id));
         }
-      } catch (err) {
-        console.error("Error cargando catálogos", err);
       }
-    };
-    fetchCatalogos();
-  }, []);
+    } catch (err) {
+      console.error("Error cargando catálogos", err);
+    }
+  }, [selectedPeriodo]);
 
   // Cargar datos del dashboard
   const fetchDashboardData = useCallback(async () => {
@@ -143,6 +142,23 @@ export default function DashboardPage() {
       setLoading(false);
     }
   }, [selectedPeriodo, selectedCarrera]);
+
+  useEffect(() => {
+    fetchCatalogos();
+  }, [fetchCatalogos]);
+
+  // Recargar cuando la ventana obtiene foco
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchCatalogos();
+      if (selectedPeriodo) {
+        fetchDashboardData();
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [fetchCatalogos, fetchDashboardData, selectedPeriodo]);
 
   // Cargar datos cuando cambien filtros
   useEffect(() => {

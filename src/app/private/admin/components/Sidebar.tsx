@@ -16,6 +16,7 @@ import {
   Power,
   ChevronLeft,
   ChevronRight,
+  Calendar,
 } from "lucide-react";
 import { isAdmin, isCoordinador, isAutoridad, isDocente } from "@/lib/auth";
 
@@ -39,6 +40,7 @@ export default function Sidebar() {
     // Admin y Coordinador ven opciones de gestión
     if (isAdmin() || isCoordinador()) {
       baseItems.push(
+        { label: "Periodos", href: "/private/admin/periodos", icon: <Calendar size={20} /> },
         { label: "Materias", href: "/private/admin/materias", icon: <Book size={20} /> },
         { label: "Docentes", href: "/private/admin/docentes", icon: <Users2 size={20} /> },
         { label: "Aulas", href: "/private/admin/aulas", icon: <Building2 size={20} /> },
