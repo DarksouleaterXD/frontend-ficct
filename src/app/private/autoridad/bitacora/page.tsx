@@ -9,6 +9,7 @@ import {
   Clock,
   Eye,
 } from 'lucide-react';
+import { API_URL } from '@/lib/api';
 
 interface Usuario {
   id: number;
@@ -86,7 +87,7 @@ export default function BitacoraPage() {
       if (fechaInicio) params.append('fecha_inicio', fechaInicio);
       if (fechaFin) params.append('fecha_fin', fechaFin);
 
-      const res = await fetch(`http://localhost:8000/api/bitacoras?${params}`, {
+      const res = await fetch(`${API_URL}/bitacoras?${params}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -107,7 +108,7 @@ export default function BitacoraPage() {
   const fetchEstadisticas = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/bitacoras/estadisticas/resumen', {
+      const res = await fetch(`${API_URL}/bitacoras/estadisticas/resumen`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
