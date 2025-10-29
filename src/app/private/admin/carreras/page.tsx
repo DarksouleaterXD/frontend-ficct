@@ -9,7 +9,8 @@ interface Carrera {
   id?: number;
   nombre: string;
   codigo: string;
-  sigla: string;
+  plan: string;
+  version: string;
   created_at?: string;
 }
 

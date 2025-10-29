@@ -3,10 +3,11 @@
 import { Trash2, Edit2 } from "lucide-react";
 
 interface Carrera {
-  id: number;
+  id?: number;
   nombre: string;
   codigo: string;
-  sigla: string;
+  plan: string;
+  version: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -87,7 +88,10 @@ export default function TablaCarreras({
                 Código
               </th>
               <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151" }}>
-                Sigla
+                Plan
+              </th>
+              <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151" }}>
+                Versión
               </th>
               <th style={{ padding: "1rem", textAlign: "center", fontWeight: "600", color: "#374151" }}>
                 Acciones
@@ -142,7 +146,23 @@ export default function TablaCarreras({
                       letterSpacing: "0.05em",
                     }}
                   >
-                    {carrera.sigla}
+                    {carrera.plan}
+                  </span>
+                </td>
+                <td style={{ padding: "1rem", color: "#6b7280" }}>
+                  <span
+                    style={{
+                      display: "inline-block",
+                      backgroundColor: "#e0e7ff",
+                      color: "#3730a3",
+                      padding: "0.25rem 0.75rem",
+                      borderRadius: "0.375rem",
+                      fontWeight: "500",
+                      fontSize: "0.75rem",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    {carrera.version}
                   </span>
                 </td>
                 <td style={{ padding: "1rem", textAlign: "center" }}>
@@ -168,15 +188,15 @@ export default function TablaCarreras({
                       Editar
                     </button>
                     <button
-                      onClick={() => onDelete(carrera.id)}
-                      disabled={deletingId === carrera.id}
+                      onClick={() => carrera.id && onDelete(carrera.id)}
+                      disabled={deletingId === carrera.id || !carrera.id}
                       style={{
                         backgroundColor: "#ef4444",
                         color: "white",
                         border: "none",
                         borderRadius: "0.375rem",
                         padding: "0.5rem 0.75rem",
-                        cursor: deletingId === carrera.id ? "not-allowed" : "pointer",
+                        cursor: deletingId === carrera.id || !carrera.id ? "not-allowed" : "pointer",
                         display: "flex",
                         alignItems: "center",
                         gap: "0.5rem",
@@ -184,12 +204,12 @@ export default function TablaCarreras({
                         opacity: deletingId === carrera.id ? 0.6 : 1,
                       }}
                       onMouseEnter={(e) => {
-                        if (deletingId !== carrera.id) {
+                        if (deletingId !== carrera.id && carrera.id) {
                           e.currentTarget.style.backgroundColor = "#dc2626";
                         }
                       }}
                       onMouseLeave={(e) => {
-                        if (deletingId !== carrera.id) {
+                        if (deletingId !== carrera.id && carrera.id) {
                           e.currentTarget.style.backgroundColor = "#ef4444";
                         }
                       }}

@@ -15,7 +15,6 @@ import {
   Users,
   Workflow,
   Hash,
-  FileText,
   Globe,
 } from 'lucide-react';
 
@@ -153,10 +152,10 @@ export default function BitacoraPage() {
 
   const getOperacionColorInline = (operacion: string) => {
     const colores: { [key: string]: { backgroundColor: string; color: string } } = {
-      CREATE: { backgroundColor: '#dcfce7', color: '#166534' },
-      UPDATE: { backgroundColor: '#dbeafe', color: '#1e40af' },
-      DELETE: { backgroundColor: '#fee2e2', color: '#991b1b' },
-      READ: { backgroundColor: '#f3f4f6', color: '#374151' },
+      crear: { backgroundColor: '#dcfce7', color: '#166534' },
+      editar: { backgroundColor: '#dbeafe', color: '#1e40af' },
+      eliminar: { backgroundColor: '#fee2e2', color: '#991b1b' },
+      cambiar_estado: { backgroundColor: '#f3f4f6', color: '#374151' },
     };
     return colores[operacion] || { backgroundColor: '#f3f4f6', color: '#374151' };
   };
@@ -423,12 +422,6 @@ export default function BitacoraPage() {
                       </th>
                       <th style={{ paddingLeft: "1.5rem", paddingRight: "1.5rem", paddingTop: "0.75rem", paddingBottom: "0.75rem", textAlign: "left", fontSize: "14px", fontWeight: "600", color: "#374151" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <Table size={16} style={{ color: "#6b7280" }} />
-                          Tabla
-                        </div>
-                      </th>
-                      <th style={{ paddingLeft: "1.5rem", paddingRight: "1.5rem", paddingTop: "0.75rem", paddingBottom: "0.75rem", textAlign: "left", fontSize: "14px", fontWeight: "600", color: "#374151" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                           <Workflow size={16} style={{ color: "#6b7280" }} />
                           Operación
                         </div>
@@ -437,12 +430,6 @@ export default function BitacoraPage() {
                         <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                           <Hash size={16} style={{ color: "#6b7280" }} />
                           ID
-                        </div>
-                      </th>
-                      <th style={{ paddingLeft: "1.5rem", paddingRight: "1.5rem", paddingTop: "0.75rem", paddingBottom: "0.75rem", textAlign: "left", fontSize: "14px", fontWeight: "600", color: "#374151" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                          <FileText size={16} style={{ color: "#6b7280" }} />
-                          Descripción
                         </div>
                       </th>
                       <th style={{ paddingLeft: "1.5rem", paddingRight: "1.5rem", paddingTop: "0.75rem", paddingBottom: "0.75rem", textAlign: "center", fontSize: "14px", fontWeight: "600", color: "#374151" }}>
@@ -465,18 +452,7 @@ export default function BitacoraPage() {
                             <div style={{ fontSize: "12px", color: "#6b7280" }}>{bitacora.usuario.email}</div>
                           </td>
                           <td style={{ paddingLeft: "1.5rem", paddingRight: "1.5rem", paddingTop: "1rem", paddingBottom: "1rem", fontSize: "14px" }}>
-                            {bitacora.ip_address === 'LOCAL' ? (
-                              <span style={{ paddingLeft: "0.75rem", paddingRight: "0.75rem", paddingTop: "0.25rem", paddingBottom: "0.25rem", backgroundColor: "#dcfce7", color: "#166534", borderRadius: "9999px", fontSize: "12px", fontWeight: "500" }}>
-                                🌐 LOCAL
-                              </span>
-                            ) : (
-                              <span style={{ fontFamily: "monospace", color: "#4b5563", fontSize: "13px" }}>{bitacora.ip_address || '-'}</span>
-                            )}
-                          </td>
-                          <td style={{ paddingLeft: "1.5rem", paddingRight: "1.5rem", paddingTop: "1rem", paddingBottom: "1rem", fontSize: "14px" }}>
-                            <span style={{ paddingLeft: "0.75rem", paddingRight: "0.75rem", paddingTop: "0.25rem", paddingBottom: "0.25rem", backgroundColor: "#dbeafe", color: "#1e40af", borderRadius: "9999px", fontSize: "12px", fontWeight: "500" }}>
-                              {bitacora.tabla}
-                            </span>
+                            <span style={{ fontFamily: "monospace", color: "#4b5563", fontSize: "13px" }}>{bitacora.ip_address || '-'}</span>
                           </td>
                           <td style={{ paddingLeft: "1.5rem", paddingRight: "1.5rem", paddingTop: "1rem", paddingBottom: "1rem", fontSize: "14px" }}>
                             <span style={{ paddingLeft: "0.75rem", paddingRight: "0.75rem", paddingTop: "0.25rem", paddingBottom: "0.25rem", borderRadius: "9999px", fontSize: "12px", fontWeight: "500", ...getOperacionColorInline(bitacora.operacion) }}>
@@ -484,9 +460,6 @@ export default function BitacoraPage() {
                             </span>
                           </td>
                           <td style={{ paddingLeft: "1.5rem", paddingRight: "1.5rem", paddingTop: "1rem", paddingBottom: "1rem", fontSize: "14px", color: "#111827", fontFamily: "monospace" }}>{bitacora.id_registro}</td>
-                          <td style={{ paddingLeft: "1.5rem", paddingRight: "1.5rem", paddingTop: "1rem", paddingBottom: "1rem", fontSize: "14px", color: "#4b5563", maxWidth: "300px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {bitacora.descripcion}
-                          </td>
                           <td style={{ paddingLeft: "1.5rem", paddingRight: "1.5rem", paddingTop: "1rem", paddingBottom: "1rem", textAlign: "center" }}>
                             <button
                               onClick={() => setExpandedId(expandedId === bitacora.id ? null : bitacora.id)}
@@ -505,38 +478,34 @@ export default function BitacoraPage() {
                         {/* Fila expandida */}
                         {expandedId === bitacora.id && (
                           <tr style={{ backgroundColor: "#eff6ff", borderBottom: "1px solid #d1d5db" }}>
-                            <td colSpan={7} style={{ paddingLeft: "1.5rem", paddingRight: "1.5rem", paddingTop: "1rem", paddingBottom: "1rem" }}>
-                              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                            <td colSpan={6} style={{ paddingLeft: "1.5rem", paddingRight: "1.5rem", paddingTop: "1rem", paddingBottom: "1rem" }}>
+                              <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
                                 <div>
-                                  <p style={{ fontWeight: "600", color: "#374151", marginBottom: "0.25rem", margin: 0 }}>📝 Descripción completa:</p>
+                                  <p style={{ fontWeight: "600", color: "#374151", marginBottom: "0.5rem", margin: 0, fontSize: "14px" }}>📝 Descripción:</p>
                                   <p style={{ color: "#4b5563", whiteSpace: "pre-wrap", backgroundColor: "#f3f4f6", padding: "0.75rem", borderRadius: "0.5rem", fontSize: "14px", margin: 0 }}>
                                     {bitacora.descripcion}
                                   </p>
                                 </div>
                                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", fontSize: "14px" }}>
                                   <div>
-                                    <p style={{ fontWeight: "600", color: "#374151", margin: 0 }}>ID Bitácora:</p>
-                                    <p style={{ color: "#4b5563", margin: 0 }}>{bitacora.id}</p>
+                                    <p style={{ fontWeight: "600", color: "#374151", margin: 0, fontSize: "13px" }}>Tabla:</p>
+                                    <p style={{ color: "#4b5563", margin: 0, marginTop: "0.25rem" }}>{bitacora.tabla}</p>
                                   </div>
                                   <div>
-                                    <p style={{ fontWeight: "600", color: "#374151", margin: 0 }}>Usuario ID:</p>
-                                    <p style={{ color: "#4b5563", margin: 0 }}>{bitacora.id_usuario}</p>
+                                    <p style={{ fontWeight: "600", color: "#374151", margin: 0, fontSize: "13px" }}>ID Bitácora:</p>
+                                    <p style={{ color: "#4b5563", margin: 0, marginTop: "0.25rem" }}>{bitacora.id}</p>
                                   </div>
                                   <div>
-                                    <p style={{ fontWeight: "600", color: "#374151", margin: 0 }}>IP Address:</p>
-                                    {bitacora.ip_address === 'LOCAL' ? (
-                                      <p style={{ color: "#166534", margin: 0, fontWeight: "500" }}>🌐 LOCAL</p>
-                                    ) : (
-                                      <p style={{ color: "#4b5563", margin: 0, fontFamily: "monospace" }}>{bitacora.ip_address || '-'}</p>
-                                    )}
+                                    <p style={{ fontWeight: "600", color: "#374151", margin: 0, fontSize: "13px" }}>Usuario ID:</p>
+                                    <p style={{ color: "#4b5563", margin: 0, marginTop: "0.25rem" }}>{bitacora.id_usuario}</p>
                                   </div>
                                   <div>
-                                    <p style={{ fontWeight: "600", color: "#374151", margin: 0 }}>Registro ID:</p>
-                                    <p style={{ color: "#4b5563", margin: 0 }}>{bitacora.id_registro}</p>
+                                    <p style={{ fontWeight: "600", color: "#374151", margin: 0, fontSize: "13px" }}>IP Address:</p>
+                                    <p style={{ color: "#4b5563", margin: 0, marginTop: "0.25rem", fontFamily: "monospace" }}>{bitacora.ip_address || '-'}</p>
                                   </div>
                                   <div>
-                                    <p style={{ fontWeight: "600", color: "#374151", margin: 0 }}>Tabla:</p>
-                                    <p style={{ color: "#4b5563", margin: 0 }}>{bitacora.tabla}</p>
+                                    <p style={{ fontWeight: "600", color: "#374151", margin: 0, fontSize: "13px" }}>Registro ID:</p>
+                                    <p style={{ color: "#4b5563", margin: 0, marginTop: "0.25rem" }}>{bitacora.id_registro}</p>
                                   </div>
                                 </div>
                               </div>

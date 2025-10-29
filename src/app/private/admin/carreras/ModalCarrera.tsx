@@ -7,7 +7,8 @@ interface Carrera {
   id?: number;
   nombre: string;
   codigo: string;
-  sigla: string;
+  plan: string;
+  version: string;
 }
 
 interface ModalCarreraProps {
@@ -30,7 +31,8 @@ export default function ModalCarrera({
   const [formData, setFormData] = useState<Carrera>({
     nombre: "",
     codigo: "",
-    sigla: "",
+    plan: "",
+    version: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -43,10 +45,11 @@ export default function ModalCarrera({
           id: carrera.id,
           nombre: carrera.nombre,
           codigo: carrera.codigo,
-          sigla: carrera.sigla,
+          plan: carrera.plan,
+          version: carrera.version,
         });
       } else {
-        setFormData({ nombre: "", codigo: "", sigla: "" });
+        setFormData({ nombre: "", codigo: "", plan: "", version: "" });
       }
       setErrors({});
     };
@@ -81,8 +84,11 @@ export default function ModalCarrera({
     if (!formData.codigo.trim()) {
       newErrors.codigo = "El código es requerido";
     }
-    if (!formData.sigla.trim()) {
-      newErrors.sigla = "La sigla es requerida";
+    if (!formData.plan.trim()) {
+      newErrors.plan = "El plan es requerido";
+    }
+    if (!formData.version.trim()) {
+      newErrors.version = "La versión es requerida";
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -203,28 +209,51 @@ export default function ModalCarrera({
               {errors.codigo && <p style={{ color: "#ef4444", fontSize: "0.875rem", marginTop: "0.25rem" }}>{errors.codigo}</p>}
             </div>
 
-            {/* Sigla */}
+            {/* Plan */}
             <div>
               <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", color: "#374151" }}>
-                Sigla *
+                Plan *
               </label>
               <input
                 type="text"
-                name="sigla"
-                value={formData.sigla}
+                name="plan"
+                value={formData.plan}
                 onChange={handleChange}
-                placeholder="Ej: IS"
-                maxLength={10}
+                placeholder="Ej: Plan 2024"
                 style={{
                   width: "100%",
                   padding: "0.75rem",
-                  border: `1px solid ${errors.sigla ? "#ef4444" : "#d1d5db"}`,
+                  border: `1px solid ${errors.plan ? "#ef4444" : "#d1d5db"}`,
                   borderRadius: "0.5rem",
                   fontSize: "1rem",
                   boxSizing: "border-box",
                 }}
               />
-              {errors.sigla && <p style={{ color: "#ef4444", fontSize: "0.875rem", marginTop: "0.25rem" }}>{errors.sigla}</p>}
+              {errors.plan && <p style={{ color: "#ef4444", fontSize: "0.875rem", marginTop: "0.25rem" }}>{errors.plan}</p>}
+            </div>
+
+            {/* Versión */}
+            <div>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", color: "#374151" }}>
+                Versión *
+              </label>
+              <input
+                type="text"
+                name="version"
+                value={formData.version}
+                onChange={handleChange}
+                placeholder="Ej: 1.0"
+                maxLength={50}
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  border: `1px solid ${errors.version ? "#ef4444" : "#d1d5db"}`,
+                  borderRadius: "0.5rem",
+                  fontSize: "1rem",
+                  boxSizing: "border-box",
+                }}
+              />
+              {errors.version && <p style={{ color: "#ef4444", fontSize: "0.875rem", marginTop: "0.25rem" }}>{errors.version}</p>}
             </div>
 
             {/* Buttons */}

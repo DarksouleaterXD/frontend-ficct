@@ -25,6 +25,7 @@ interface Grupo {
   paralelo: string;
   turno: "mañana" | "tarde" | "noche";
   capacidad: number;
+  codigo?: string;
   materia?: Materia;
   periodo?: Periodo;
   created_at?: string;
@@ -49,6 +50,7 @@ interface FormData {
   paralelo: string;
   turno: "mañana" | "tarde" | "noche";
   capacidad: number | "";
+  codigo: string;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
@@ -77,6 +79,7 @@ export default function GruposPage() {
     paralelo: "",
     turno: "mañana",
     capacidad: "",
+    codigo: "",
   });
   const [filterMateria, setFilterMateria] = useState<string>("");
   const [filterPeriodo, setFilterPeriodo] = useState<string>("");
@@ -232,6 +235,7 @@ export default function GruposPage() {
       paralelo: grupo.paralelo,
       turno: grupo.turno,
       capacidad: grupo.capacidad,
+      codigo: grupo.codigo || "",
     });
     setShowModal(true);
   };
@@ -262,6 +266,7 @@ export default function GruposPage() {
       paralelo: "",
       turno: "mañana",
       capacidad: "",
+      codigo: "",
     });
     setEditingId(null);
   };
@@ -485,6 +490,15 @@ export default function GruposPage() {
                       color: "#374151",
                     }}>
                       Paralelo
+                    </th>
+                    <th style={{
+                      padding: "1rem",
+                      textAlign: "left",
+                      fontSize: "0.875rem",
+                      fontWeight: "600",
+                      color: "#374151",
+                    }}>
+                      Código
                     </th>
                     <th style={{
                       padding: "1rem",
@@ -912,6 +926,38 @@ export default function GruposPage() {
                     fontSize: "0.875rem",
                   }}
                   placeholder="40"
+                />
+              </div>
+
+              {/* Código de Grupo */}
+              <div>
+                <label style={{
+                  display: "block",
+                  fontSize: "0.875rem",
+                  fontWeight: "600",
+                  marginBottom: "0.5rem",
+                  color: "#374151",
+                }}>
+                  Código (ej: SA, SC)
+                </label>
+                <input
+                  type="text"
+                  maxLength={10}
+                  value={formData.codigo}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      codigo: e.target.value.toUpperCase(),
+                    })
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "0.5rem",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "0.375rem",
+                    fontSize: "0.875rem",
+                  }}
+                  placeholder="SA"
                 />
               </div>
             </div>

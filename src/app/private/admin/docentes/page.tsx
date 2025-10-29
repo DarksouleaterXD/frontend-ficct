@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users2, Plus, Edit2, Trash2, Search } from "lucide-react";
+import { Users2, Plus, Edit2, Trash2, Search, Eye, EyeOff } from "lucide-react";
 
 interface Docente {
   id: number;
@@ -32,11 +32,13 @@ export default function DocentesPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     ci: "",
     nombre: "",
     correo: "",
     telefono: "",
+    contrasena: "",
     estado: "activo" as "activo" | "inactivo",
   });
 
@@ -110,7 +112,7 @@ export default function DocentesPage() {
       setSuccess(editingId ? "Docente actualizado correctamente" : "Docente creado correctamente");
       setShowModal(false);
       setEditingId(null);
-      setFormData({ ci: "", nombre: "", correo: "", telefono: "", estado: "activo" });
+      setFormData({ ci: "", nombre: "", correo: "", telefono: "", contrasena: "", estado: "activo" });
       setTimeout(() => {
         setSuccess(null);
         fetchDocentes(1, searchTerm);
@@ -191,6 +193,7 @@ export default function DocentesPage() {
       nombre: docente.nombre,
       correo: docente.correo,
       telefono: docente.telefono,
+      contrasena: "",
       estado: docente.estado,
     });
     setEditingId(docente.id);
@@ -223,7 +226,7 @@ export default function DocentesPage() {
         <button
           onClick={() => {
             setEditingId(null);
-            setFormData({ ci: "", nombre: "", correo: "", telefono: "", estado: "activo" });
+            setFormData({ ci: "", nombre: "", correo: "", telefono: "", contrasena: "", estado: "activo" });
             setShowModal(true);
           }}
           style={{
@@ -363,7 +366,7 @@ export default function DocentesPage() {
                       <td style={{ padding: "1rem", color: "#1f2937", fontSize: "14px" }}>{docente.ci}</td>
                       <td style={{ padding: "1rem", color: "#1f2937", fontSize: "14px" }}>{docente.nombre}</td>
                       <td style={{ padding: "1rem", color: "#1f2937", fontSize: "14px" }}>{docente.correo}</td>
-                      <td style={{ padding: "1rem", color: "#1f2937", fontSize: "14px" }}>{docente.telefono}</td>
+                      <td style={{ padding: "1rem", color: "#1f2937", fontSize: "14px", fontFamily: "monospace" }}>{docente.telefono || "—"}</td>
                       <td style={{ padding: "1rem" }}>
                         <span
                           style={{
@@ -615,20 +618,74 @@ export default function DocentesPage() {
               </div>
 
               <div>
+                <label style={{ display: "block", fontSize: "14px", fontWeight: "600", color: editingId ? "#9ca3af" : "#374151", marginBottom: "0.5rem" }}>
+                  Contraseña {!editingId && "*"}
+                </label>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={formData.contrasena}
+                    onChange={(e) => setFormData({ ...formData, contrasena: e.target.value })}
+                    placeholder={editingId ? "Dejar en blanco para no cambiar" : "Ej: Contraseña123!"}
+                    style={{
+                      width: "100%",
+                      padding: "0.75rem",
+                      paddingRight: "2.5rem",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "0.5rem",
+                      fontSize: "14px",
+                      boxSizing: "border-box",
+                      backgroundColor: editingId ? "#f9fafb" : "#ffffff",
+                    }}
+                    required={!editingId}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: "absolute",
+                      right: "0.75rem",
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      padding: "0",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "#6b7280",
+                    }}
+                    title={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                {editingId && (
+                  <p style={{ fontSize: "12px", color: "#6b7280", marginTop: "0.25rem" }}>
+                    Solo completa esto si deseas cambiar la contraseña
+                  </p>
+                )}
+              </div>
+
+              <div>
                 <label style={{ display: "block", fontSize: "14px", fontWeight: "600", color: "#374151", marginBottom: "0.5rem" }}>
                   Teléfono
                 </label>
                 <input
                   type="tel"
+                  inputMode="numeric"
                   value={formData.telefono}
-                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                  placeholder="Ej: +591 76123456"
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '');
+                    setFormData({ ...formData, telefono: value });
+                  }}
+                  placeholder="Ej: 7612345678"
                   style={{
                     width: "100%",
                     padding: "0.75rem",
                     border: "1px solid #d1d5db",
                     borderRadius: "0.5rem",
                     fontSize: "14px",
+                    fontFamily: "monospace",
                     boxSizing: "border-box",
                   }}
                 />

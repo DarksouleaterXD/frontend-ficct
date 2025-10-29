@@ -9,7 +9,7 @@ interface Aula {
   id: number;
   codigo: string;
   nombre: string;
-  tipo: "teorica" | "practica" | "laboratorio" | "mixta";
+  tipo: "teorica" | "laboratorio";
   capacidad: number;
   ubicacion?: string;
   piso?: number;
@@ -40,7 +40,7 @@ export default function AulasPage() {
   const [formData, setFormData] = useState({
     codigo: "",
     nombre: "",
-    tipo: "teorica" as "teorica" | "practica" | "laboratorio" | "mixta",
+    tipo: "teorica" as "teorica" | "laboratorio",
     capacidad: "",
     ubicacion: "",
     piso: "",
@@ -322,7 +322,7 @@ export default function AulasPage() {
                 <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151", fontSize: "14px" }}>Nombre</th>
                 <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151", fontSize: "14px" }}>Tipo</th>
                 <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151", fontSize: "14px" }}>Capacidad</th>
-                <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151", fontSize: "14px" }}>Ubicación</th>
+                <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151", fontSize: "14px" }}>Número Aula</th>
                 <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151", fontSize: "14px" }}>Piso</th>
                 <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151", fontSize: "14px" }}>Acciones</th>
               </tr>
@@ -353,12 +353,8 @@ export default function AulasPage() {
                       <span style={{
                         display: "inline-block",
                         padding: "0.25rem 0.75rem",
-                        backgroundColor: aula.tipo === "teorica" ? "#dbeafe" : 
-                                        aula.tipo === "practica" ? "#d1fae5" :
-                                        aula.tipo === "laboratorio" ? "#fed7aa" : "#f3e8ff",
-                        color: aula.tipo === "teorica" ? "#0c4a6e" :
-                               aula.tipo === "practica" ? "#065f46" :
-                               aula.tipo === "laboratorio" ? "#7c2d12" : "#4c1d95",
+                        backgroundColor: aula.tipo === "teorica" ? "#dbeafe" : "#fed7aa",
+                        color: aula.tipo === "teorica" ? "#0c4a6e" : "#7c2d12",
                         borderRadius: "0.25rem",
                         fontSize: "12px",
                         fontWeight: "500",
@@ -370,11 +366,11 @@ export default function AulasPage() {
                     <td style={{ padding: "1rem", fontSize: "14px", color: "#1f2937", fontWeight: "500" }}>
                       {aula.capacidad} personas
                     </td>
-                    <td style={{ padding: "1rem", fontSize: "14px", color: "#6b7280" }}>
+                    <td style={{ padding: "1rem", fontSize: "14px", color: "#1f2937", fontWeight: "500", fontFamily: "monospace" }}>
                       {aula.ubicacion || "-"}
                     </td>
                     <td style={{ padding: "1rem", fontSize: "14px", color: "#1f2937", fontWeight: "500" }}>
-                      {aula.piso !== undefined && aula.piso !== null ? `Piso ${aula.piso}` : "-"}
+                      {aula.ubicacion ? `Piso ${parseInt(aula.ubicacion.toString().charAt(0))}` : "-"}
                     </td>
                     <td style={{ padding: "1rem", fontSize: "14px" }}>
                       <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -553,7 +549,7 @@ export default function AulasPage() {
                 </label>
                 <select
                   value={formData.tipo}
-                  onChange={(e) => setFormData({ ...formData, tipo: e.target.value as "teorica" | "practica" | "laboratorio" | "mixta" })}
+                  onChange={(e) => setFormData({ ...formData, tipo: e.target.value as "teorica" | "laboratorio" })}
                   required
                   style={{
                     width: "100%",
@@ -565,9 +561,7 @@ export default function AulasPage() {
                   }}
                 >
                   <option value="teorica">Teórica</option>
-                  <option value="practica">Práctica</option>
                   <option value="laboratorio">Laboratorio</option>
-                  <option value="mixta">Mixta</option>
                 </select>
               </div>
 
@@ -599,13 +593,14 @@ export default function AulasPage() {
               {/* Ubicación */}
               <div>
                 <label style={{ display: "block", fontSize: "14px", fontWeight: "500", color: "#374151", marginBottom: "0.5rem" }}>
-                  Ubicación
+                  Número de Aula *
                 </label>
                 <input
                   type="text"
                   value={formData.ubicacion}
                   onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
-                  placeholder="ej. Edificio B, Ala Norte"
+                  placeholder="ej. 101, 205, 310"
+                  required
                   style={{
                     width: "100%",
                     padding: "0.75rem 1rem",
@@ -615,31 +610,29 @@ export default function AulasPage() {
                     boxSizing: "border-box",
                   }}
                 />
-                <small style={{ color: "#6b7280" }}>Ubicación física del aula (opcional)</small>
+                <small style={{ color: "#6b7280" }}>
+                  Formato: 10-15 (Piso 1), 20-25 (Piso 2), 30-35 (Piso 3), 40-45 (Piso 4)
+                </small>
               </div>
 
-              {/* Piso */}
+              {/* Piso - Calculado automáticamente */}
               <div>
                 <label style={{ display: "block", fontSize: "14px", fontWeight: "500", color: "#374151", marginBottom: "0.5rem" }}>
-                  Piso
+                  Piso (automático)
                 </label>
-                <input
-                  type="number"
-                  value={formData.piso}
-                  onChange={(e) => setFormData({ ...formData, piso: e.target.value })}
-                  placeholder="ej. 2"
-                  min="0"
-                  max="20"
+                <div
                   style={{
                     width: "100%",
                     padding: "0.75rem 1rem",
                     border: "1px solid #d1d5db",
                     borderRadius: "0.375rem",
                     fontSize: "14px",
-                    boxSizing: "border-box",
+                    backgroundColor: "#f3f4f6",
+                    color: "#6b7280",
                   }}
-                />
-                <small style={{ color: "#6b7280" }}>Número de piso (opcional)</small>
+                >
+                  {formData.ubicacion ? `Piso ${parseInt(formData.ubicacion.charAt(0))}` : "Ingresa el número de aula"}
+                </div>
               </div>
 
               {/* Estado - OCULTO */}
