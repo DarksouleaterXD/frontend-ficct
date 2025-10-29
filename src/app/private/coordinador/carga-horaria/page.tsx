@@ -1,34 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
-import { Plus, Edit2, Trash2, Search, Clock, AlertCircle } from "lucide-react";
-import { canAccess } from "@/lib/auth";
-
-interface BloqueHorario {
-  id: number;
-  nombre: string;
-  hora_inicio: string;
-  hora_fin: string;
-  numero_bloque: number;
-  activo: boolean;
-}
-
-interface Grupo {
-  id: number;
-  id_materia: number;
-  id_periodo: number;
-  paralelo: string;
-  turno: string;
-  capacidad: number;
-}
-
-interface Aula {
-  id: number;
-  codigo: string;
-  nombre: string;
-  capacidad: number;
-  tipo: string;
-}
+import { Plus, Edit2, Trash2, Users, AlertCircle, CheckCircle } from "lucide-react";
 
 interface Docente {
   id: number;
@@ -39,24 +12,43 @@ interface Docente {
   };
 }
 
-interface Horario {
+interface Grupo {
   id: number;
-  id_grupo: number;
-  id_aula: number;
-  id_docente: number;
-  id_bloque: number;
-  dia_semana: string;
+  id_materia: number;
+  id_periodo: number;
+  paralelo: string;
+  turno: string;
+  capacidad: number;
+  materia?: {
+    nombre: string;
+  };
+}
+
+interface Periodo {
+  id: number;
+  nombre: string;
+  fecha_inicio: string;
+  fecha_fin: string;
   activo: boolean;
-  descripcion?: string;
-  grupo?: Grupo;
-  aula?: Aula;
+  vigente: boolean;
+}
+
+interface CargaHoraria {
+  id: number;
+  id_docente: number;
+  id_grupo: number;
+  id_periodo: number;
+  horas_semana: number;
+  observaciones?: string;
+  activo: boolean;
   docente?: Docente;
-  bloque?: BloqueHorario;
+  grupo?: Grupo;
+  periodo?: Periodo;
 }
 
 interface PaginatedResponse {
   success: boolean;
-  data: Horario[];
+  data: CargaHoraria[];
   pagination: {
     total: number;
     count: number;
@@ -67,54 +59,51 @@ interface PaginatedResponse {
 }
 
 interface FormData {
-  id_grupo: string;
-  id_aula: string;
   id_docente: string;
-  id_bloque: string;
-  dia_semana: string;
+  id_grupo: string;
+  id_periodo: string;
+  horas_semana: string;
+  observaciones: string;
   activo: boolean;
-  descripcion: string;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
-const DIAS_SEMANA = ["lunes", "martes", "miércoles", "jueves", "viernes"];
 
-export default function HorariosPage() {
-  const [horarios, setHorarios] = useState<Horario[]>([]);
-  const [grupos, setGrupos] = useState<Grupo[]>([]);
-  const [aulas, setAulas] = useState<Aula[]>([]);
+export default function CargaHorariaPage() {
+  const [cargas, setCargas] = useState<CargaHoraria[]>([]);
   const [docentes, setDocentes] = useState<Docente[]>([]);
-  const [bloques, setBloques] = useState<BloqueHorario[]>([]);
+  const [grupos, setGrupos] = useState<Grupo[]>([]);
+  const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [filterDia, setFilterDia] = useState<string>("");
+  const [filterPeriodo, setFilterPeriodo] = useState<string>("");
   const [filterGrupo, setFilterGrupo] = useState<string>("");
+  const [filterDocente, setFilterDocente] = useState<string>("");
   const [formData, setFormData] = useState<FormData>({
-    id_grupo: "",
-    id_aula: "",
     id_docente: "",
-    id_bloque: "",
-    dia_semana: "",
+    id_grupo: "",
+    id_periodo: "",
+    horas_semana: "4",
+    observaciones: "",
     activo: true,
-    descripcion: "",
   });
 
-  const fetchHorarios = useCallback(
+  const fetchCargas = useCallback(
     async (page = 1) => {
       setLoading(true);
       setError(null);
       try {
         const token = localStorage.getItem("token");
-        const url = new URL(`${API_URL}/horarios`);
+        const url = new URL(`${API_URL}/carga-horaria`);
         url.searchParams.append("page", page.toString());
-        if (filterDia) url.searchParams.append("dia_semana", filterDia);
+        if (filterPeriodo) url.searchParams.append("id_periodo", filterPeriodo);
         if (filterGrupo) url.searchParams.append("id_grupo", filterGrupo);
+        if (filterDocente) url.searchParams.append("id_docente", filterDocente);
 
         const response = await fetch(url, {
           headers: {
@@ -123,10 +112,10 @@ export default function HorariosPage() {
           },
         });
 
-        if (!response.ok) throw new Error("Error al cargar horarios");
+        if (!response.ok) throw new Error("Error al cargar cargas horarias");
 
         const data: PaginatedResponse = await response.json();
-        setHorarios(data.data || []);
+        setCargas(data.data || []);
         setCurrentPage(data.pagination.current_page);
         setTotalPages(data.pagination.total_pages);
       } catch (err) {
@@ -135,65 +124,58 @@ export default function HorariosPage() {
         setLoading(false);
       }
     },
-    [filterDia, filterGrupo]
+    [filterPeriodo, filterGrupo, filterDocente]
   );
 
   const fetchRelatedData = useCallback(async () => {
     const token = localStorage.getItem("token");
 
     try {
-      const [gruposRes, aulasRes, docentesRes, bloquesRes] = await Promise.all([
-        fetch(`${API_URL}/grupos?per_page=999`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch(`${API_URL}/aulas?per_page=999`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+      const [docentesRes, gruposRes, periodosRes] = await Promise.all([
         fetch(`${API_URL}/docentes?per_page=999`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${API_URL}/bloques-horarios?per_page=999`, {
+        fetch(`${API_URL}/grupos?per_page=999`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/periodos?per_page=999`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
 
-      if (gruposRes.ok) {
-        const gruposData = await gruposRes.json();
-        setGrupos(gruposData.data || []);
-      }
-      if (aulasRes.ok) {
-        const aulasData = await aulasRes.json();
-        setAulas(aulasData.data || []);
-      }
       if (docentesRes.ok) {
-        const docentesData = await docentesRes.json();
-        setDocentes(docentesData.data || []);
+        const data = await docentesRes.json();
+        setDocentes(data.data || []);
       }
-      if (bloquesRes.ok) {
-        const bloquesData = await bloquesRes.json();
-        setBloques(bloquesData.data || []);
+      if (gruposRes.ok) {
+        const data = await gruposRes.json();
+        setGrupos(data.data || []);
+      }
+      if (periodosRes.ok) {
+        const data = await periodosRes.json();
+        setPeriodos(data.data || []);
       }
     } catch (err) {
-      console.error("Error cargando datos relacionados:", err);
+      console.error("Error cargando datos:", err);
     }
   }, []);
 
-  const handleSaveHorario = async () => {
-    if (
-      !formData.id_grupo ||
-      !formData.id_aula ||
-      !formData.id_docente ||
-      !formData.id_bloque ||
-      !formData.dia_semana
-    ) {
+  const handleSaveCarga = async () => {
+    if (!formData.id_docente || !formData.id_grupo || !formData.id_periodo || !formData.horas_semana) {
       setError("Todos los campos requeridos son obligatorios");
+      return;
+    }
+
+    const horas = parseInt(formData.horas_semana);
+    if (horas < 1 || horas > 40) {
+      setError("Las horas deben estar entre 1 y 40");
       return;
     }
 
     try {
       const token = localStorage.getItem("token");
       const method = editingId ? "PUT" : "POST";
-      const url = editingId ? `${API_URL}/horarios/${editingId}` : `${API_URL}/horarios`;
+      const url = editingId ? `${API_URL}/carga-horaria/${editingId}` : `${API_URL}/carga-horaria`;
 
       const response = await fetch(url, {
         method,
@@ -202,40 +184,39 @@ export default function HorariosPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          id_grupo: parseInt(formData.id_grupo),
-          id_aula: parseInt(formData.id_aula),
           id_docente: parseInt(formData.id_docente),
-          id_bloque: parseInt(formData.id_bloque),
-          dia_semana: formData.dia_semana,
+          id_grupo: parseInt(formData.id_grupo),
+          id_periodo: parseInt(formData.id_periodo),
+          horas_semana: horas,
+          observaciones: formData.observaciones,
           activo: formData.activo,
-          descripcion: formData.descripcion,
         }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.message || "Error al guardar horario");
+        setError(data.message || "Error al guardar");
         return;
       }
 
-      setSuccess(data.message || "Horario guardado exitosamente");
+      setSuccess(data.message || "Guardado exitosamente");
       setShowModal(false);
       resetForm();
-      await fetchHorarios(currentPage);
+      await fetchCargas(currentPage);
 
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al guardar horario");
+      setError(err instanceof Error ? err.message : "Error al guardar");
     }
   };
 
-  const handleDeleteHorario = async (id: number) => {
-    if (!confirm("¿Confirma que desea eliminar este horario?")) return;
+  const handleDeleteCarga = async (id: number) => {
+    if (!confirm("¿Confirma que desea eliminar esta asignación?")) return;
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/horarios/${id}`, {
+      const response = await fetch(`${API_URL}/carga-horaria/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -246,74 +227,61 @@ export default function HorariosPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.message || "Error al eliminar horario");
+        setError(data.message || "Error al eliminar");
         return;
       }
 
-      setSuccess("Horario eliminado exitosamente");
-      await fetchHorarios(currentPage);
+      setSuccess("Eliminado exitosamente");
+      await fetchCargas(currentPage);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al eliminar horario");
+      setError(err instanceof Error ? err.message : "Error al eliminar");
     }
   };
 
-  const handleEditHorario = (horario: Horario) => {
-    setEditingId(horario.id);
+  const handleEditCarga = (carga: CargaHoraria) => {
+    setEditingId(carga.id);
     setFormData({
-      id_grupo: horario.id_grupo.toString(),
-      id_aula: horario.id_aula.toString(),
-      id_docente: horario.id_docente.toString(),
-      id_bloque: horario.id_bloque.toString(),
-      dia_semana: horario.dia_semana,
-      activo: horario.activo,
-      descripcion: horario.descripcion || "",
+      id_docente: carga.id_docente.toString(),
+      id_grupo: carga.id_grupo.toString(),
+      id_periodo: carga.id_periodo.toString(),
+      horas_semana: carga.horas_semana.toString(),
+      observaciones: carga.observaciones || "",
+      activo: carga.activo,
     });
     setShowModal(true);
   };
 
   const resetForm = () => {
     setFormData({
-      id_grupo: "",
-      id_aula: "",
       id_docente: "",
-      id_bloque: "",
-      dia_semana: "",
+      id_grupo: "",
+      id_periodo: "",
+      horas_semana: "4",
+      observaciones: "",
       activo: true,
-      descripcion: "",
     });
     setEditingId(null);
   };
 
   useEffect(() => {
-    fetchHorarios(currentPage);
-  }, [currentPage, filterDia, filterGrupo, fetchHorarios]);
+    fetchCargas(currentPage);
+  }, [currentPage, filterPeriodo, filterGrupo, filterDocente, fetchCargas]);
 
   useEffect(() => {
     fetchRelatedData();
   }, [fetchRelatedData]);
 
-  const canEdit = canAccess(["admin", "coordinador"]);
-  const canView = canAccess(["admin", "coordinador", "autoridad", "docente"]);
-
-  const getGrupoName = (grupo?: Grupo, idGrupo?: number) => {
-    if (grupo) return `Grupo ${grupo.id}`;
-    return `Grupo ${idGrupo}`;
-  };
-
-  const getAulaName = (aula?: Aula, idAula?: number) => {
-    if (aula) return aula.nombre || aula.codigo;
-    return `Aula ${idAula}`;
-  };
-
   const getDocenteName = (docente?: Docente) => {
-    if (docente?.persona?.nombre) return docente.persona.nombre;
-    return "N/A";
+    return docente?.persona?.nombre || `Docente ${docente?.id}`;
   };
 
-  const getBloqueName = (bloque?: BloqueHorario) => {
-    if (bloque) return `${bloque.nombre} (${bloque.hora_inicio} - ${bloque.hora_fin})`;
-    return "N/A";
+  const getGrupoName = (grupo?: Grupo) => {
+    return `Grupo ${grupo?.id}`;
+  };
+
+  const getPeriodoName = (periodo?: Periodo) => {
+    return periodo?.nombre || `Periodo ${periodo?.id}`;
   };
 
   return (
@@ -321,34 +289,32 @@ export default function HorariosPage() {
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <h1 style={{ fontSize: "30px", fontWeight: "bold", color: "#1f2937", margin: 0 }}>
-          Gestión de Horarios
+          Gestión de Carga Horaria
         </h1>
-        {canEdit && (
-          <button
-            onClick={() => {
-              resetForm();
-              setShowModal(true);
-            }}
-            style={{
-              backgroundColor: "#3b82f6",
-              color: "white",
-              padding: "0.5rem 1rem",
-              borderRadius: "0.5rem",
-              border: "none",
-              cursor: "pointer",
-              fontWeight: "600",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              transition: "background-color 0.3s ease",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1e40af")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3b82f6")}
-          >
-            <Plus size={20} />
-            Nuevo Horario
-          </button>
-        )}
+        <button
+          onClick={() => {
+            resetForm();
+            setShowModal(true);
+          }}
+          style={{
+            backgroundColor: "#3b82f6",
+            color: "white",
+            padding: "0.5rem 1rem",
+            borderRadius: "0.5rem",
+            border: "none",
+            cursor: "pointer",
+            fontWeight: "600",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+            transition: "background-color 0.3s ease",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1e40af")}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3b82f6")}
+        >
+          <Plus size={20} />
+          Asignar Docente
+        </button>
       </div>
 
       {/* Alertas */}
@@ -377,8 +343,12 @@ export default function HorariosPage() {
             borderRadius: "0.5rem",
             padding: "0.75rem",
             color: "#166534",
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
           }}
         >
+          <CheckCircle size={18} />
           {success}
         </div>
       )}
@@ -396,27 +366,10 @@ export default function HorariosPage() {
           padding: "1.5rem",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <Search size={18} color="#6b7280" />
-          <input
-            type="text"
-            placeholder="Buscar grupo..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "0.5rem",
-              border: "1px solid #e5e7eb",
-              borderRadius: "0.375rem",
-              fontSize: "0.875rem",
-            }}
-          />
-        </div>
-
         <select
-          value={filterDia}
+          value={filterPeriodo}
           onChange={(e) => {
-            setFilterDia(e.target.value);
+            setFilterPeriodo(e.target.value);
             setCurrentPage(1);
           }}
           style={{
@@ -427,10 +380,11 @@ export default function HorariosPage() {
             backgroundColor: "#ffffff",
           }}
         >
-          <option value="">Todos los días</option>
-          {DIAS_SEMANA.map((dia) => (
-            <option key={dia} value={dia}>
-              {dia.charAt(0).toUpperCase() + dia.slice(1)}
+          <option value="">Todos los periodos</option>
+          {periodos.map((periodo) => (
+            <option key={periodo.id} value={periodo.id}>
+              {periodo.nombre}
+              {periodo.vigente ? " (Vigente)" : ""}
             </option>
           ))}
         </select>
@@ -456,6 +410,28 @@ export default function HorariosPage() {
             </option>
           ))}
         </select>
+
+        <select
+          value={filterDocente}
+          onChange={(e) => {
+            setFilterDocente(e.target.value);
+            setCurrentPage(1);
+          }}
+          style={{
+            padding: "0.5rem",
+            border: "1px solid #e5e7eb",
+            borderRadius: "0.375rem",
+            fontSize: "0.875rem",
+            backgroundColor: "#ffffff",
+          }}
+        >
+          <option value="">Todos los docentes</option>
+          {docentes.map((docente) => (
+            <option key={docente.id} value={docente.id}>
+              {getDocenteName(docente)}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Tabla */}
@@ -470,11 +446,11 @@ export default function HorariosPage() {
       >
         {loading ? (
           <div style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>
-            Cargando horarios...
+            Cargando...
           </div>
-        ) : horarios.length === 0 ? (
+        ) : cargas.length === 0 ? (
           <div style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>
-            No hay horarios para mostrar
+            No hay asignaciones para mostrar
           </div>
         ) : (
           <>
@@ -496,28 +472,6 @@ export default function HorariosPage() {
                         color: "#374151",
                       }}
                     >
-                      Grupo
-                    </th>
-                    <th
-                      style={{
-                        padding: "1rem",
-                        textAlign: "left",
-                        fontSize: "0.875rem",
-                        fontWeight: "600",
-                        color: "#374151",
-                      }}
-                    >
-                      Aula
-                    </th>
-                    <th
-                      style={{
-                        padding: "1rem",
-                        textAlign: "left",
-                        fontSize: "0.875rem",
-                        fontWeight: "600",
-                        color: "#374151",
-                      }}
-                    >
                       Docente
                     </th>
                     <th
@@ -529,7 +483,18 @@ export default function HorariosPage() {
                         color: "#374151",
                       }}
                     >
-                      Bloque
+                      Grupo
+                    </th>
+                    <th
+                      style={{
+                        padding: "1rem",
+                        textAlign: "left",
+                        fontSize: "0.875rem",
+                        fontWeight: "600",
+                        color: "#374151",
+                      }}
+                    >
+                      Periodo
                     </th>
                     <th
                       style={{
@@ -540,7 +505,18 @@ export default function HorariosPage() {
                         color: "#374151",
                       }}
                     >
-                      Día
+                      Horas/Semana
+                    </th>
+                    <th
+                      style={{
+                        padding: "1rem",
+                        textAlign: "left",
+                        fontSize: "0.875rem",
+                        fontWeight: "600",
+                        color: "#374151",
+                      }}
+                    >
+                      Observaciones
                     </th>
                     <th
                       style={{
@@ -553,25 +529,23 @@ export default function HorariosPage() {
                     >
                       Estado
                     </th>
-                    {canEdit && (
-                      <th
-                        style={{
-                          padding: "1rem",
-                          textAlign: "center",
-                          fontSize: "0.875rem",
-                          fontWeight: "600",
-                          color: "#374151",
-                        }}
-                      >
-                        Acciones
-                      </th>
-                    )}
+                    <th
+                      style={{
+                        padding: "1rem",
+                        textAlign: "center",
+                        fontSize: "0.875rem",
+                        fontWeight: "600",
+                        color: "#374151",
+                      }}
+                    >
+                      Acciones
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {horarios.map((horario) => (
+                  {cargas.map((carga) => (
                     <tr
-                      key={horario.id}
+                      key={carga.id}
                       style={{
                         borderBottom: "1px solid #e5e7eb",
                         transition: "background-color 0.2s",
@@ -587,7 +561,7 @@ export default function HorariosPage() {
                           color: "#1f2937",
                         }}
                       >
-                        {getGrupoName(horario.grupo, horario.id_grupo)}
+                        {getDocenteName(carga.docente)}
                       </td>
                       <td
                         style={{
@@ -596,7 +570,7 @@ export default function HorariosPage() {
                           color: "#6b7280",
                         }}
                       >
-                        {getAulaName(horario.aula, horario.id_aula)}
+                        {getGrupoName(carga.grupo)}
                       </td>
                       <td
                         style={{
@@ -605,32 +579,43 @@ export default function HorariosPage() {
                           color: "#6b7280",
                         }}
                       >
-                        {getDocenteName(horario.docente)}
-                      </td>
-                      <td
-                        style={{
-                          padding: "1rem",
-                          fontSize: "0.875rem",
-                          color: "#6b7280",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "0.5rem",
-                        }}
-                      >
-                        <Clock size={14} />
-                        {getBloqueName(horario.bloque)}
+                        {getPeriodoName(carga.periodo)}
                       </td>
                       <td
                         style={{
                           padding: "1rem",
                           textAlign: "center",
-                          fontSize: "0.875rem",
-                          fontWeight: "500",
-                          color: "#374151",
-                          textTransform: "capitalize",
+                          fontSize: "1rem",
+                          fontWeight: "600",
+                          color: "#1f2937",
                         }}
                       >
-                        {horario.dia_semana}
+                        <span
+                          style={{
+                            backgroundColor: "#dbeafe",
+                            color: "#1e40af",
+                            padding: "0.25rem 0.75rem",
+                            borderRadius: "9999px",
+                            fontSize: "0.875rem",
+                            fontWeight: "600",
+                          }}
+                        >
+                          {carga.horas_semana} h
+                        </span>
+                      </td>
+                      <td
+                        style={{
+                          padding: "1rem",
+                          fontSize: "0.75rem",
+                          color: "#6b7280",
+                          maxWidth: "200px",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                        title={carga.observaciones}
+                      >
+                        {carga.observaciones || "—"}
                       </td>
                       <td
                         style={{
@@ -645,71 +630,69 @@ export default function HorariosPage() {
                             borderRadius: "9999px",
                             fontSize: "0.75rem",
                             fontWeight: "500",
-                            backgroundColor: horario.activo ? "#dcfce7" : "#f3f4f6",
-                            color: horario.activo ? "#166534" : "#6b7280",
+                            backgroundColor: carga.activo ? "#dcfce7" : "#f3f4f6",
+                            color: carga.activo ? "#166534" : "#6b7280",
                           }}
                         >
-                          {horario.activo ? "Activo" : "Inactivo"}
+                          {carga.activo ? "Activo" : "Inactivo"}
                         </span>
                       </td>
-                      {canEdit && (
-                        <td
+                      <td
+                        style={{
+                          padding: "1rem",
+                          textAlign: "center",
+                          display: "flex",
+                          gap: "0.5rem",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <button
+                          onClick={() => handleEditCarga(carga)}
                           style={{
-                            padding: "1rem",
-                            textAlign: "center",
+                            backgroundColor: "#60a5fa",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "0.375rem",
+                            padding: "0.5rem",
+                            cursor: "pointer",
                             display: "flex",
-                            gap: "0.5rem",
+                            alignItems: "center",
                             justifyContent: "center",
+                            transition: "background-color 0.2s",
                           }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.backgroundColor = "#3b82f6")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.backgroundColor = "#60a5fa")
+                          }
                         >
-                          <button
-                            onClick={() => handleEditHorario(horario)}
-                            style={{
-                              backgroundColor: "#60a5fa",
-                              color: "white",
-                              border: "none",
-                              borderRadius: "0.375rem",
-                              padding: "0.5rem",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              transition: "background-color 0.2s",
-                            }}
-                            onMouseEnter={(e) =>
-                              (e.currentTarget.style.backgroundColor = "#3b82f6")
-                            }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.backgroundColor = "#60a5fa")
-                            }
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteHorario(horario.id)}
-                            style={{
-                              backgroundColor: "#ef4444",
-                              color: "white",
-                              border: "none",
-                              borderRadius: "0.375rem",
-                              padding: "0.5rem",
-                              cursor: "pointer",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              transition: "background-color 0.2s",
-                            }}
-                            onMouseEnter={(e) =>
-                              (e.currentTarget.style.backgroundColor = "#dc2626")
-                            }
-                            onMouseLeave={(e) =>
-                              (e.currentTarget.style.backgroundColor = "#ef4444")
-                            }
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      )}
+                          <Edit2 size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCarga(carga.id)}
+                          style={{
+                            backgroundColor: "#ef4444",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "0.375rem",
+                            padding: "0.5rem",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            transition: "background-color 0.2s",
+                          }}
+                          onMouseEnter={(e) =>
+                            (e.currentTarget.style.backgroundColor = "#dc2626")
+                          }
+                          onMouseLeave={(e) =>
+                            (e.currentTarget.style.backgroundColor = "#ef4444")
+                          }
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -802,10 +785,8 @@ export default function HorariosPage() {
               borderRadius: "0.75rem",
               boxShadow: "0 20px 25px rgba(0, 0, 0, 0.15)",
               padding: "2rem",
-              maxWidth: "600px",
+              maxWidth: "500px",
               width: "90%",
-              maxHeight: "90vh",
-              overflowY: "auto",
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -815,12 +796,49 @@ export default function HorariosPage() {
                 fontWeight: "bold",
                 marginBottom: "1.5rem",
                 color: "#1f2937",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
               }}
             >
-              {editingId ? "Editar Horario" : "Nuevo Horario"}
+              <Users size={24} />
+              {editingId ? "Actualizar Asignación" : "Asignar Docente"}
             </h2>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {/* Docente */}
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: "0.875rem",
+                    fontWeight: "600",
+                    marginBottom: "0.5rem",
+                    color: "#374151",
+                  }}
+                >
+                  Docente *
+                </label>
+                <select
+                  value={formData.id_docente}
+                  onChange={(e) => setFormData({ ...formData, id_docente: e.target.value })}
+                  style={{
+                    width: "100%",
+                    padding: "0.5rem",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "0.375rem",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  <option value="">Selecciona un docente</option>
+                  {docentes.map((docente) => (
+                    <option key={docente.id} value={docente.id}>
+                      {getDocenteName(docente)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Grupo */}
               <div>
                 <label
@@ -854,7 +872,7 @@ export default function HorariosPage() {
                 </select>
               </div>
 
-              {/* Aula */}
+              {/* Periodo */}
               <div>
                 <label
                   style={{
@@ -865,11 +883,11 @@ export default function HorariosPage() {
                     color: "#374151",
                   }}
                 >
-                  Aula *
+                  Periodo *
                 </label>
                 <select
-                  value={formData.id_aula}
-                  onChange={(e) => setFormData({ ...formData, id_aula: e.target.value })}
+                  value={formData.id_periodo}
+                  onChange={(e) => setFormData({ ...formData, id_periodo: e.target.value })}
                   style={{
                     width: "100%",
                     padding: "0.5rem",
@@ -878,16 +896,17 @@ export default function HorariosPage() {
                     fontSize: "0.875rem",
                   }}
                 >
-                  <option value="">Selecciona un aula</option>
-                  {aulas.map((aula) => (
-                    <option key={aula.id} value={aula.id}>
-                      {aula.nombre} ({aula.codigo}) - Capacidad: {aula.capacidad}
+                  <option value="">Selecciona un periodo</option>
+                  {periodos.map((periodo) => (
+                    <option key={periodo.id} value={periodo.id}>
+                      {periodo.nombre}
+                      {periodo.vigente ? " (Vigente)" : ""}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Docente */}
+              {/* Horas/Semana */}
               <div>
                 <label
                   style={{
@@ -898,11 +917,14 @@ export default function HorariosPage() {
                     color: "#374151",
                   }}
                 >
-                  Docente *
+                  Horas por Semana * (1-40)
                 </label>
-                <select
-                  value={formData.id_docente}
-                  onChange={(e) => setFormData({ ...formData, id_docente: e.target.value })}
+                <input
+                  type="number"
+                  min="1"
+                  max="40"
+                  value={formData.horas_semana}
+                  onChange={(e) => setFormData({ ...formData, horas_semana: e.target.value })}
                   style={{
                     width: "100%",
                     padding: "0.5rem",
@@ -910,17 +932,11 @@ export default function HorariosPage() {
                     borderRadius: "0.375rem",
                     fontSize: "0.875rem",
                   }}
-                >
-                  <option value="">Selecciona un docente</option>
-                  {docentes.map((docente) => (
-                    <option key={docente.id} value={docente.id}>
-                      {docente.persona?.nombre || `Docente ${docente.id}`}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="4"
+                />
               </div>
 
-              {/* Bloque de Horario */}
+              {/* Observaciones */}
               <div>
                 <label
                   style={{
@@ -931,84 +947,18 @@ export default function HorariosPage() {
                     color: "#374151",
                   }}
                 >
-                  Bloque Horario *
-                </label>
-                <select
-                  value={formData.id_bloque}
-                  onChange={(e) => setFormData({ ...formData, id_bloque: e.target.value })}
-                  style={{
-                    width: "100%",
-                    padding: "0.5rem",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "0.375rem",
-                    fontSize: "0.875rem",
-                  }}
-                >
-                  <option value="">Selecciona un bloque</option>
-                  {bloques.map((bloque) => (
-                    <option key={bloque.id} value={bloque.id}>
-                      {bloque.nombre} ({bloque.hora_inicio} - {bloque.hora_fin})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Día de la Semana */}
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "0.875rem",
-                    fontWeight: "600",
-                    marginBottom: "0.5rem",
-                    color: "#374151",
-                  }}
-                >
-                  Día de la Semana *
-                </label>
-                <select
-                  value={formData.dia_semana}
-                  onChange={(e) => setFormData({ ...formData, dia_semana: e.target.value })}
-                  style={{
-                    width: "100%",
-                    padding: "0.5rem",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "0.375rem",
-                    fontSize: "0.875rem",
-                  }}
-                >
-                  <option value="">Selecciona un día</option>
-                  {DIAS_SEMANA.map((dia) => (
-                    <option key={dia} value={dia}>
-                      {dia.charAt(0).toUpperCase() + dia.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Descripción */}
-              <div>
-                <label
-                  style={{
-                    display: "block",
-                    fontSize: "0.875rem",
-                    fontWeight: "600",
-                    marginBottom: "0.5rem",
-                    color: "#374151",
-                  }}
-                >
-                  Descripción (opcional)
+                  Observaciones (opcional)
                 </label>
                 <textarea
-                  value={formData.descripcion}
-                  onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })}
+                  value={formData.observaciones}
+                  onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
                   style={{
                     width: "100%",
                     padding: "0.5rem",
                     border: "1px solid #e5e7eb",
                     borderRadius: "0.375rem",
                     fontSize: "0.875rem",
-                    minHeight: "80px",
+                    minHeight: "60px",
                     fontFamily: "inherit",
                   }}
                   placeholder="Notas adicionales..."
@@ -1071,7 +1021,7 @@ export default function HorariosPage() {
                 Cancelar
               </button>
               <button
-                onClick={handleSaveHorario}
+                onClick={handleSaveCarga}
                 style={{
                   padding: "0.5rem 1rem",
                   backgroundColor: "#3b82f6",

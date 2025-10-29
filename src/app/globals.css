@@ -14,17 +14,17 @@
   --color-primary-dark: #334155;
   --color-primary-accent: #3b82f6;
 
-  /* Colores Neutrales */
-  --color-bg-primary: #0f172a;
-  --color-bg-cards: #1e293b;
-  --color-borders: #334155;
-  --color-text-primary: #f1f5f9;
-  --color-text-secondary: #94a3b8;
+  /* Colores Neutrales - LIGHT THEME */
+  --color-bg-primary: #f9fafb;
+  --color-bg-cards: #ffffff;
+  --color-borders: #e5e7eb;
+  --color-text-primary: #111827;
+  --color-text-secondary: #6b7280;
 
   /* Colores de Estado */
-  --color-hover: #64748b;
-  --color-info-banner: #1e40af;
-  --color-info-bg: #1e3a8a;
+  --color-hover: #f3f4f6;
+  --color-info-banner: #dbeafe;
+  --color-info-bg: #eff6ff;
 
   /* Compatibilidad */
   --background: var(--color-bg-primary);
@@ -44,7 +44,6 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-
 
 
 

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
-  BookOpen,
   Clock,
   Building2,
   Book,
@@ -18,6 +17,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { isAdmin, isCoordinador, isAutoridad, isDocente } from "@/lib/auth";
 
 interface NavItem {
   label: string;
@@ -30,18 +30,52 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const navItems: NavItem[] = [
-    { label: "Dashboard", href: "/private/admin", icon: <LayoutDashboard size={20} /> },
-    { label: "Gestión Académica", href: "/private/admin/gestion-academica", icon: <BookOpen size={20} /> },
-    { label: "Horarios", href: "/private/admin/horarios", icon: <Clock size={20} /> },
-    { label: "Aulas", href: "/private/admin/aulas", icon: <Building2 size={20} /> },
-    { label: "Materias", href: "/private/admin/materias", icon: <Book size={20} /> },
-    { label: "Grupos", href: "/private/admin/grupos", icon: <Users size={20} /> },
-    { label: "Carreras", href: "/private/admin/carreras", icon: <Award size={20} /> },
-    { label: "Docentes", href: "/private/admin/docentes", icon: <Users2 size={20} /> },
-    { label: "Asistencia", href: "/private/admin/asistencia", icon: <CheckSquare size={20} /> },
-    { label: "Bitácora", href: "/private/admin/bitacora", icon: <ClipboardList size={20} /> },
-  ];
+  // Definir items según el rol
+  const getNavItems = (): NavItem[] => {
+    const baseItems: NavItem[] = [
+      { label: "Dashboard", href: "/private/admin", icon: <LayoutDashboard size={20} /> },
+    ];
+
+    // Admin y Coordinador ven opciones de gestión
+    if (isAdmin() || isCoordinador()) {
+      baseItems.push(
+        { label: "Materias", href: "/private/admin/materias", icon: <Book size={20} /> },
+        { label: "Docentes", href: "/private/admin/docentes", icon: <Users2 size={20} /> },
+        { label: "Aulas", href: "/private/admin/aulas", icon: <Building2 size={20} /> },
+        { label: "Grupos", href: "/private/admin/grupos", icon: <Users size={20} /> },
+        { label: "Horarios", href: "/private/admin/horarios", icon: <Clock size={20} /> }
+      );
+    }
+
+    // Solo Admin
+    if (isAdmin()) {
+      baseItems.push(
+        { label: "Carreras", href: "/private/admin/carreras", icon: <Award size={20} /> },
+        { label: "Roles", href: "/private/admin/roles", icon: <Users size={20} /> },
+        { label: "Bitácora", href: "/private/admin/bitacora", icon: <ClipboardList size={20} /> }
+      );
+    }
+
+    // Autoridad - Solo lectura
+    if (isAutoridad()) {
+      baseItems.push(
+        { label: "Horarios", href: "/private/autoridad/horarios", icon: <Clock size={20} /> },
+        { label: "Reportes", href: "/private/autoridad/reportes", icon: <ClipboardList size={20} /> }
+      );
+    }
+
+    // Docente
+    if (isDocente()) {
+      baseItems.push(
+        { label: "Mi Horario", href: "/private/docente/horario", icon: <Clock size={20} /> },
+        { label: "Asistencia", href: "/private/docente/asistencia", icon: <CheckSquare size={20} /> }
+      );
+    }
+
+    return baseItems;
+  };
+
+  const navItems = getNavItems();
 
   const handleLogout = () => {
     localStorage.removeItem("token");
