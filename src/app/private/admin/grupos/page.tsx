@@ -97,7 +97,10 @@ export default function GruposPage() {
         });
         if (materiasRes.ok) {
           const data = await materiasRes.json();
+          console.log("Materias cargadas:", data.data);
           setMaterias(Array.isArray(data.data) ? data.data : []);
+        } else {
+          console.error("Error al cargar materias:", materiasRes.status);
         }
 
         // Cargar periodos
@@ -106,7 +109,10 @@ export default function GruposPage() {
         });
         if (periodosRes.ok) {
           const data = await periodosRes.json();
+          console.log("Periodos cargados:", data.data);
           setPeriodos(Array.isArray(data.data) ? data.data : []);
+        } else {
+          console.error("Error al cargar periodos:", periodosRes.status);
         }
       } catch (err) {
         console.error("Error cargando datos iniciales:", err);
@@ -162,8 +168,8 @@ export default function GruposPage() {
       return;
     }
 
-    if (!/^[A-Z]$/.test(formData.paralelo)) {
-      setError("El paralelo debe ser una letra mayúscula (A-Z)");
+    if (!/^[A-Z]{1,2}$/.test(formData.paralelo)) {
+      setError("El paralelo debe ser 1 o 2 letras mayúsculas (A-Z, ej: SA, SC)");
       return;
     }
 
@@ -841,7 +847,7 @@ export default function GruposPage() {
                 </label>
                 <input
                   type="text"
-                  maxLength={1}
+                  maxLength={2}
                   value={formData.paralelo}
                   onChange={(e) =>
                     setFormData({
@@ -856,7 +862,7 @@ export default function GruposPage() {
                     borderRadius: "0.375rem",
                     fontSize: "0.875rem",
                   }}
-                  placeholder="A"
+                  placeholder="SA"
                 />
               </div>
 
@@ -926,38 +932,6 @@ export default function GruposPage() {
                     fontSize: "0.875rem",
                   }}
                   placeholder="40"
-                />
-              </div>
-
-              {/* Código de Grupo */}
-              <div>
-                <label style={{
-                  display: "block",
-                  fontSize: "0.875rem",
-                  fontWeight: "600",
-                  marginBottom: "0.5rem",
-                  color: "#374151",
-                }}>
-                  Código (ej: SA, SC)
-                </label>
-                <input
-                  type="text"
-                  maxLength={10}
-                  value={formData.codigo}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      codigo: e.target.value.toUpperCase(),
-                    })
-                  }
-                  style={{
-                    width: "100%",
-                    padding: "0.5rem",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "0.375rem",
-                    fontSize: "0.875rem",
-                  }}
-                  placeholder="SA"
                 />
               </div>
             </div>

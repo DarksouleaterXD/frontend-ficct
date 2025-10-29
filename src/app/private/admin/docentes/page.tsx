@@ -94,13 +94,19 @@ export default function DocentesPage() {
       const method = editingId ? "PUT" : "POST";
       const url = editingId ? `${API_URL}/docentes/${editingId}` : `${API_URL}/docentes`;
 
+      // Preparar datos - si es edición y la contraseña está vacía, no enviarla
+      const { contrasena, ...restData } = formData;
+      const dataToSend = editingId && !contrasena 
+        ? restData 
+        : formData;
+
       const response = await fetch(url, {
         method,
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend),
       });
 
       const data = await response.json();
