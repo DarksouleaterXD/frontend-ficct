@@ -17,6 +17,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Calendar,
+  UserCog,
+  Shield,
 } from "lucide-react";
 import { isAdmin, isCoordinador, isAutoridad, isDocente } from "@/lib/auth";
 
@@ -53,7 +55,8 @@ export default function Sidebar() {
     if (isAdmin()) {
       baseItems.push(
         { label: "Carreras", href: "/private/admin/carreras", icon: <Award size={20} /> },
-        { label: "Roles", href: "/private/admin/roles", icon: <Users size={20} /> },
+        { label: "Usuarios", href: "/private/admin/usuarios", icon: <UserCog size={20} /> },
+        { label: "Roles", href: "/private/admin/roles", icon: <Shield size={20} /> },
         { label: "Bitácora", href: "/private/admin/bitacora", icon: <ClipboardList size={20} /> }
       );
     }

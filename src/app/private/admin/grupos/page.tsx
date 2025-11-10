@@ -23,7 +23,6 @@ interface Grupo {
   id_materia: number;
   id_periodo: number;
   paralelo: string;
-  turno: "mañana" | "tarde" | "noche";
   capacidad: number;
   codigo?: string;
   materia?: Materia;
@@ -48,18 +47,11 @@ interface FormData {
   id_materia: number | "";
   id_periodo: number | "";
   paralelo: string;
-  turno: "mañana" | "tarde" | "noche";
   capacidad: number | "";
   codigo: string;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
-
-const TURNOS = [
-  { value: "mañana", label: "Mañana" },
-  { value: "tarde", label: "Tarde" },
-  { value: "noche", label: "Noche" },
-];
 
 export default function GruposPage() {
   const [grupos, setGrupos] = useState<Grupo[]>([]);
@@ -77,13 +69,11 @@ export default function GruposPage() {
     id_materia: "",
     id_periodo: "",
     paralelo: "",
-    turno: "mañana",
     capacidad: "",
     codigo: "",
   });
   const [filterMateria, setFilterMateria] = useState<string>("");
   const [filterPeriodo, setFilterPeriodo] = useState<string>("");
-  const [filterTurno, setFilterTurno] = useState<string>("");
 
   // Cargar materias y periodos al montar
   useEffect(() => {
@@ -123,7 +113,7 @@ export default function GruposPage() {
   }, []);
 
   const fetchGrupos = useCallback(
-    async (page = 1, search = "", idMateria = "", idPeriodo = "", turno = "") => {
+    async (page = 1, search = "", idMateria = "", idPeriodo = "") => {
       setLoading(true);
       setError(null);
       try {
@@ -133,7 +123,6 @@ export default function GruposPage() {
         if (search) url.searchParams.append("search", search);
         if (idMateria) url.searchParams.append("id_materia", idMateria);
         if (idPeriodo) url.searchParams.append("id_periodo", idPeriodo);
-        if (turno) url.searchParams.append("turno", turno);
 
         const response = await fetch(url, {
           headers: {
@@ -197,7 +186,7 @@ export default function GruposPage() {
       setSuccess(data.message || "Grupo guardado exitosamente");
       setShowModal(false);
       resetForm();
-      await fetchGrupos(currentPage, searchTerm, filterMateria, filterPeriodo, filterTurno);
+      await fetchGrupos(currentPage, searchTerm, filterMateria, filterPeriodo);
 
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
@@ -226,7 +215,7 @@ export default function GruposPage() {
       }
 
       setSuccess("Grupo eliminado exitosamente");
-      await fetchGrupos(currentPage, searchTerm, filterMateria, filterPeriodo, filterTurno);
+      await fetchGrupos(currentPage, searchTerm, filterMateria, filterPeriodo);
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al eliminar grupo");
@@ -239,7 +228,6 @@ export default function GruposPage() {
       id_materia: grupo.id_materia,
       id_periodo: grupo.id_periodo,
       paralelo: grupo.paralelo,
-      turno: grupo.turno,
       capacidad: grupo.capacidad,
       codigo: grupo.codigo || "",
     });
@@ -249,19 +237,17 @@ export default function GruposPage() {
   const handleSearch = (term: string) => {
     setSearchTerm(term);
     setCurrentPage(1);
-    fetchGrupos(1, term, filterMateria, filterPeriodo, filterTurno);
+    fetchGrupos(1, term, filterMateria, filterPeriodo);
   };
 
   const handleFilterChange = (type: string, value: string) => {
     setCurrentPage(1);
     if (type === "materia") setFilterMateria(value);
     if (type === "periodo") setFilterPeriodo(value);
-    if (type === "turno") setFilterTurno(value);
     
     fetchGrupos(1, searchTerm, 
       type === "materia" ? value : filterMateria,
-      type === "periodo" ? value : filterPeriodo,
-      type === "turno" ? value : filterTurno
+      type === "periodo" ? value : filterPeriodo
     );
   };
 
@@ -270,7 +256,6 @@ export default function GruposPage() {
       id_materia: "",
       id_periodo: "",
       paralelo: "",
-      turno: "mañana",
       capacidad: "",
       codigo: "",
     });
@@ -278,23 +263,10 @@ export default function GruposPage() {
   };
 
   useEffect(() => {
-    fetchGrupos(currentPage, searchTerm, filterMateria, filterPeriodo, filterTurno);
-  }, [currentPage, fetchGrupos, searchTerm, filterMateria, filterPeriodo, filterTurno]);
+    fetchGrupos(currentPage, searchTerm, filterMateria, filterPeriodo);
+  }, [currentPage, fetchGrupos, searchTerm, filterMateria, filterPeriodo]);
 
   const canEdit = canAccess(["admin", "coordinador"]);
-
-  const getTurnoColor = (turno: string) => {
-    const colors: Record<string, string> = {
-      mañana: "bg-blue-100 text-blue-800",
-      tarde: "bg-yellow-100 text-yellow-800",
-      noche: "bg-purple-100 text-purple-800",
-    };
-    return colors[turno] || "bg-gray-100 text-gray-800";
-  };
-
-  const getTurnoLabel = (turno: string) => {
-    return TURNOS.find((t) => t.value === turno)?.label || turno;
-  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -423,26 +395,6 @@ export default function GruposPage() {
             </option>
           ))}
         </select>
-
-        {/* Filtro por Turno */}
-        <select
-          value={filterTurno}
-          onChange={(e) => handleFilterChange("turno", e.target.value)}
-          style={{
-            padding: "0.5rem",
-            border: "1px solid #e5e7eb",
-            borderRadius: "0.375rem",
-            fontSize: "0.875rem",
-            backgroundColor: "#ffffff",
-          }}
-        >
-          <option value="">Todos los Turnos</option>
-          {TURNOS.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
-            </option>
-          ))}
-        </select>
       </div>
 
       {/* Tabla de Grupos */}
@@ -504,24 +456,6 @@ export default function GruposPage() {
                       fontWeight: "600",
                       color: "#374151",
                     }}>
-                      Código
-                    </th>
-                    <th style={{
-                      padding: "1rem",
-                      textAlign: "left",
-                      fontSize: "0.875rem",
-                      fontWeight: "600",
-                      color: "#374151",
-                    }}>
-                      Turno
-                    </th>
-                    <th style={{
-                      padding: "1rem",
-                      textAlign: "left",
-                      fontSize: "0.875rem",
-                      fontWeight: "600",
-                      color: "#374151",
-                    }}>
                       Capacidad
                     </th>
                     {canEdit && (
@@ -573,21 +507,6 @@ export default function GruposPage() {
                         color: "#1f2937",
                       }}>
                         {grupo.paralelo}
-                      </td>
-                      <td style={{
-                        padding: "1rem",
-                        fontSize: "0.875rem",
-                      }}>
-                        <span style={{
-                          padding: "0.25rem 0.75rem",
-                          borderRadius: "9999px",
-                          fontSize: "0.75rem",
-                          fontWeight: "500",
-                          backgroundColor: getTurnoColor(grupo.turno).split(" ")[0],
-                          color: getTurnoColor(grupo.turno).split(" ")[1],
-                        }}>
-                          {getTurnoLabel(grupo.turno)}
-                        </span>
                       </td>
                       <td style={{
                         padding: "1rem",
@@ -864,42 +783,6 @@ export default function GruposPage() {
                   }}
                   placeholder="SA"
                 />
-              </div>
-
-              {/* Turno */}
-              <div>
-                <label style={{
-                  display: "block",
-                  fontSize: "0.875rem",
-                  fontWeight: "600",
-                  marginBottom: "0.5rem",
-                  color: "#374151",
-                }}>
-                  Turno *
-                </label>
-                <select
-                  value={formData.turno}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      turno: e.target.value as "mañana" | "tarde" | "noche",
-                    })
-                  }
-                  style={{
-                    width: "100%",
-                    padding: "0.5rem",
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "0.375rem",
-                    fontSize: "0.875rem",
-                    backgroundColor: "#ffffff",
-                  }}
-                >
-                  {TURNOS.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               {/* Capacidad */}
