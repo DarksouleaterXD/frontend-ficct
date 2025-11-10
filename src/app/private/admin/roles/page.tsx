@@ -3,32 +3,69 @@
 import { useEffect, useState, useCallback } from "react";
 import { Plus, Edit2, Trash2, Search, Shield } from "lucide-react";
 
-interface Permiso {
+interface Modulo {
   id: number;
   nombre: string;
   descripcion: string;
+}
+
+interface Accion {
+  id: number;
+  nombre: string;
+  descripcion: string;
+}
+
+interface Permiso {
+  id: number;
+  accion?: string;
+  descripcion?: string;
+  modulo?: Modulo;
+  accion_obj?: Accion;
+  id_modulo?: number;
+  id_accion?: number;
+}
+
+interface PermisoAgrupado {
+  modulo: string;
+  permisos: Array<{
+    id: number;
+    accion: string;
+    descripcion: string;
+  }>;
 }
 
 interface Rol {
   id: number;
   nombre: string;
   descripcion: string;
-  permisos?: Permiso[];
+  es_sistema: boolean;
+  activo: boolean;
+  permisos?: Array<{
+    id: number;
+    modulo: Modulo;
+    accion: Accion;
+  }>;
   created_at?: string;
   updated_at?: string;
 }
 
-interface PaginatedResponse {
-  data: Rol[];
-  current_page: number;
-  last_page: number;
-  per_page: number;
-  total: number;
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message?: string;
+  pagination?: {
+    total: number;
+    per_page: number;
+    current_page: number;
+    last_page: number;
+    from: number;
+    to: number;
+  };
 }
 
 export default function RolesPage() {
   const [roles, setRoles] = useState<Rol[]>([]);
-  const [permisos, setPermisos] = useState<Permiso[]>([]);
+  const [permisosAgrupados, setPermisosAgrupados] = useState<PermisoAgrupado[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -62,13 +99,27 @@ export default function RolesPage() {
         },
       });
 
-      if (!response.ok) throw new Error("Error al cargar roles");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        console.error("Error HTTP al cargar roles:", response.status, errorData);
+        throw new Error(errorData?.message || "Error al cargar roles");
+      }
 
-      const data: PaginatedResponse = await response.json();
-      setRoles(data.data);
-      setCurrentPage(data.current_page);
-      setTotalPages(data.last_page);
+      const result: ApiResponse<Rol[]> = await response.json();
+      console.log("Roles recibidos del backend:", result);
+      
+      if (result.success) {
+        setRoles(result.data);
+        console.log("Roles configurados:", result.data);
+        if (result.pagination) {
+          setCurrentPage(result.pagination.current_page);
+          setTotalPages(result.pagination.last_page);
+        }
+      } else {
+        throw new Error(result.message || "Error al cargar roles");
+      }
     } catch (err) {
+      console.error("Error completo:", err);
       setError(err instanceof Error ? err.message : "Error desconocido");
     } finally {
       setLoading(false);
@@ -79,7 +130,7 @@ export default function RolesPage() {
   const fetchPermisos = useCallback(async () => {
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${API_URL}/permisos?all=1`, {
+      const response = await fetch(`${API_URL}/permisos`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -87,8 +138,19 @@ export default function RolesPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setPermisos(data.data || []);
+        const result: ApiResponse<PermisoAgrupado[]> = await response.json();
+        console.log("Permisos recibidos del backend:", result);
+        
+        if (result.success && result.data) {
+          setPermisosAgrupados(result.data);
+          console.log("Permisos agrupados configurados:", result.data);
+        } else {
+          console.error("Error en respuesta de permisos:", result.message);
+        }
+      } else {
+        console.error("Error HTTP al cargar permisos:", response.status, response.statusText);
+        const errorData = await response.json().catch(() => null);
+        console.error("Detalle del error:", errorData);
       }
     } catch (err) {
       console.error("Error cargando permisos:", err);
@@ -119,7 +181,7 @@ export default function RolesPage() {
         body: JSON.stringify({
           nombre: formData.nombre,
           descripcion: formData.descripcion,
-          permiso_ids: selectedPermisos,
+          permisos: selectedPermisos,
         }),
       });
 
@@ -147,7 +209,13 @@ export default function RolesPage() {
   };
 
   // Eliminar rol
-  const handleDeleteRol = async (id: number) => {
+  const handleDeleteRol = async (id: number, esRolSistema: boolean) => {
+    if (esRolSistema) {
+      setError("No se puede eliminar un rol del sistema");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
     if (!confirm("¿Está seguro de que desea eliminar este rol?")) return;
 
     setLoading(true);
@@ -163,9 +231,14 @@ export default function RolesPage() {
         },
       });
 
-      if (!response.ok) throw new Error("Error al eliminar rol");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Error al eliminar rol");
+      }
 
       setSuccess("Rol eliminado correctamente");
+      setTimeout(() => setSuccess(null), 3000);
       fetchRoles(currentPage, searchTerm);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error desconocido");
@@ -296,7 +369,24 @@ export default function RolesPage() {
               roles.map((rol) => (
                 <tr key={rol.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
                   <td style={{ padding: "1rem", fontSize: "14px", color: "#1f2937", fontWeight: "500" }}>
-                    {rol.nombre}
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      {rol.nombre}
+                      {rol.es_sistema && (
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "0.25rem 0.5rem",
+                            backgroundColor: "#fef3c7",
+                            color: "#92400e",
+                            borderRadius: "0.375rem",
+                            fontSize: "10px",
+                            fontWeight: "600",
+                          }}
+                        >
+                          SISTEMA
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td style={{ padding: "1rem", fontSize: "14px", color: "#6b7280" }}>
                     {rol.descripcion}
@@ -316,7 +406,7 @@ export default function RolesPage() {
                               fontSize: "12px",
                             }}
                           >
-                            {p.nombre}
+                            {p.modulo.nombre} - {p.accion.nombre}
                           </span>
                         ))
                       ) : (
@@ -350,19 +440,22 @@ export default function RolesPage() {
                         Editar
                       </button>
                       <button
-                        onClick={() => handleDeleteRol(rol.id)}
+                        onClick={() => handleDeleteRol(rol.id, rol.es_sistema)}
+                        disabled={rol.es_sistema}
                         style={{
                           padding: "0.5rem 1rem",
-                          backgroundColor: "#ef4444",
+                          backgroundColor: rol.es_sistema ? "#9ca3af" : "#ef4444",
                           color: "white",
                           border: "none",
                           borderRadius: "0.375rem",
-                          cursor: "pointer",
+                          cursor: rol.es_sistema ? "not-allowed" : "pointer",
                           fontSize: "12px",
                           display: "flex",
                           alignItems: "center",
                           gap: "0.25rem",
+                          opacity: rol.es_sistema ? 0.5 : 1,
                         }}
+                        title={rol.es_sistema ? "No se puede eliminar un rol del sistema" : ""}
                       >
                         <Trash2 size={14} />
                         Eliminar
@@ -486,28 +579,104 @@ export default function RolesPage() {
               {/* Permisos */}
               <div>
                 <label style={{ display: "block", fontSize: "14px", fontWeight: "500", color: "#374151", marginBottom: "0.5rem" }}>
-                  Permisos
+                  Permisos ({selectedPermisos.length} seleccionados)
                 </label>
-                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", maxHeight: "200px", overflowY: "auto" }}>
-                  {permisos.map((permiso) => (
-                    <label key={permiso.id} style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
-                      <input
-                        type="checkbox"
-                        checked={selectedPermisos.includes(permiso.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedPermisos([...selectedPermisos, permiso.id]);
-                          } else {
-                            setSelectedPermisos(selectedPermisos.filter(id => id !== permiso.id));
-                          }
-                        }}
-                        style={{ cursor: "pointer" }}
-                      />
-                      <span style={{ fontSize: "14px", color: "#374151" }}>
-                        {permiso.nombre}
-                      </span>
-                    </label>
+                <div style={{ 
+                  border: "1px solid #d1d5db", 
+                  borderRadius: "0.375rem", 
+                  maxHeight: "300px", 
+                  overflowY: "auto",
+                  padding: "0.75rem"
+                }}>
+                  {permisosAgrupados.map((grupo) => (
+                    <div key={grupo.modulo} style={{ marginBottom: "1rem" }}>
+                      <div style={{ 
+                        display: "flex", 
+                        alignItems: "center", 
+                        gap: "0.5rem",
+                        marginBottom: "0.5rem",
+                        paddingBottom: "0.5rem",
+                        borderBottom: "1px solid #e5e7eb"
+                      }}>
+                        <Shield size={16} style={{ color: "#3b82f6" }} />
+                        <span style={{ 
+                          fontSize: "13px", 
+                          fontWeight: "600", 
+                          color: "#1f2937",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px"
+                        }}>
+                          {grupo.modulo}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const permisosIds = grupo.permisos.map(p => p.id);
+                            const todosMarcados = permisosIds.every(id => selectedPermisos.includes(id));
+                            if (todosMarcados) {
+                              setSelectedPermisos(selectedPermisos.filter(id => !permisosIds.includes(id)));
+                            } else {
+                              setSelectedPermisos([...new Set([...selectedPermisos, ...permisosIds])]);
+                            }
+                          }}
+                          style={{
+                            marginLeft: "auto",
+                            padding: "0.25rem 0.5rem",
+                            fontSize: "11px",
+                            backgroundColor: "#f3f4f6",
+                            border: "1px solid #d1d5db",
+                            borderRadius: "0.25rem",
+                            cursor: "pointer",
+                            color: "#374151"
+                          }}
+                        >
+                          {grupo.permisos.every(p => selectedPermisos.includes(p.id)) ? "Desmarcar todo" : "Marcar todo"}
+                        </button>
+                      </div>
+                      <div style={{ 
+                        display: "grid", 
+                        gridTemplateColumns: "repeat(2, 1fr)", 
+                        gap: "0.5rem",
+                        paddingLeft: "1.5rem"
+                      }}>
+                        {grupo.permisos.map((permiso) => (
+                          <label 
+                            key={permiso.id} 
+                            style={{ 
+                              display: "flex", 
+                              alignItems: "center", 
+                              gap: "0.5rem", 
+                              cursor: "pointer",
+                              padding: "0.25rem",
+                              borderRadius: "0.25rem",
+                              backgroundColor: selectedPermisos.includes(permiso.id) ? "#eff6ff" : "transparent"
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedPermisos.includes(permiso.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedPermisos([...selectedPermisos, permiso.id]);
+                                } else {
+                                  setSelectedPermisos(selectedPermisos.filter(id => id !== permiso.id));
+                                }
+                              }}
+                              style={{ cursor: "pointer" }}
+                            />
+                            <span style={{ fontSize: "13px", color: "#374151" }}>
+                              {permiso.accion}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
                   ))}
+                  {permisosAgrupados.length === 0 && (
+                    <p style={{ textAlign: "center", color: "#9ca3af", fontSize: "14px", padding: "1rem" }}>
+                      No hay permisos disponibles
+                    </p>
+                  )}
                 </div>
               </div>
 

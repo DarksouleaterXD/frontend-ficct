@@ -12,6 +12,7 @@ interface Aula {
   tipo: "teorica" | "laboratorio";
   capacidad: number;
   ubicacion?: string;
+  numero_aula?: number;
   piso?: number;
   activo: "activo" | "inactivo";
   created_at?: string;
@@ -38,12 +39,10 @@ export default function AulasPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
-    codigo: "",
     nombre: "",
     tipo: "teorica" as "teorica" | "laboratorio",
     capacidad: "",
-    ubicacion: "",
-    piso: "",
+    numero_aula: "",
     activo: "activo" as "activo" | "inactivo",
   });
 
@@ -104,7 +103,7 @@ export default function AulasPage() {
 
     try {
       // Validaciones
-      if (!formData.codigo || !formData.nombre || !formData.tipo || !formData.capacidad) {
+      if (!formData.nombre || !formData.tipo || !formData.capacidad || !formData.numero_aula) {
         throw new Error("Campos obligatorios incompletos");
       }
 
@@ -113,25 +112,22 @@ export default function AulasPage() {
         throw new Error("Capacidad debe estar entre 1 y 500");
       }
 
+      const numeroAulaNum = parseInt(formData.numero_aula);
+      if (numeroAulaNum <= 0 || numeroAulaNum > 9999) {
+        throw new Error("Número de aula debe estar entre 1 y 9999");
+      }
+
       const token = localStorage.getItem("token");
       const method = editingId ? "PUT" : "POST";
       const url = editingId ? `${API_URL}/aulas/${editingId}` : `${API_URL}/aulas`;
 
       // Preparar datos a enviar
       const bodyData: Record<string, string | number | boolean> = {
-        codigo: formData.codigo,
         nombre: formData.nombre,
         tipo: formData.tipo,
         capacidad: capacidadNum,
+        numero_aula: numeroAulaNum,
       };
-
-      // Agregar ubicación y piso solo si hay valor
-      if (formData.ubicacion) {
-        bodyData.ubicacion = formData.ubicacion;
-      }
-      if (formData.piso) {
-        bodyData.piso = parseInt(formData.piso);
-      }
 
       // En creación, siempre enviar activo
       if (!editingId) {
@@ -157,12 +153,10 @@ export default function AulasPage() {
       setShowModal(false);
       setEditingId(null);
       setFormData({ 
-        codigo: "", 
         nombre: "", 
         tipo: "teorica", 
         capacidad: "", 
-        ubicacion: "", 
-        piso: "", 
+        numero_aula: "", 
         activo: "activo" 
       });
       
@@ -209,12 +203,10 @@ export default function AulasPage() {
   // Editar aula
   const handleEditAula = (aula: Aula) => {
     setFormData({
-      codigo: aula.codigo,
       nombre: aula.nombre,
       tipo: aula.tipo,
       capacidad: aula.capacidad.toString(),
-      ubicacion: aula.ubicacion || "",
-      piso: aula.piso?.toString() || "",
+      numero_aula: aula.numero_aula?.toString() || "",
       activo: aula.activo,
     });
     setEditingId(aula.id);
@@ -251,12 +243,10 @@ export default function AulasPage() {
         <button
           onClick={() => {
             setFormData({ 
-              codigo: "", 
               nombre: "", 
               tipo: "teorica", 
               capacidad: "", 
-              ubicacion: "", 
-              piso: "", 
+              numero_aula: "", 
               activo: "activo" 
             });
             setEditingId(null);
@@ -318,7 +308,6 @@ export default function AulasPage() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ backgroundColor: "#f3f4f6", borderBottom: "1px solid #e5e7eb" }}>
-                <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151", fontSize: "14px" }}>Código</th>
                 <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151", fontSize: "14px" }}>Nombre</th>
                 <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151", fontSize: "14px" }}>Tipo</th>
                 <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151", fontSize: "14px" }}>Capacidad</th>
@@ -330,22 +319,19 @@ export default function AulasPage() {
             <tbody>
               {loading && !aulas.length ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>
+                  <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>
                     Cargando...
                   </td>
                 </tr>
               ) : aulas.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>
+                  <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>
                     No hay aulas registradas
                   </td>
                 </tr>
               ) : (
                 aulas.map((aula) => (
                   <tr key={aula.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
-                    <td style={{ padding: "1rem", fontSize: "14px", color: "#1f2937", fontFamily: "monospace" }}>
-                      {aula.codigo}
-                    </td>
                     <td style={{ padding: "1rem", fontSize: "14px", color: "#1f2937" }}>
                       {aula.nombre}
                     </td>
@@ -367,10 +353,10 @@ export default function AulasPage() {
                       {aula.capacidad} personas
                     </td>
                     <td style={{ padding: "1rem", fontSize: "14px", color: "#1f2937", fontWeight: "500", fontFamily: "monospace" }}>
-                      {aula.ubicacion || "-"}
+                      {aula.numero_aula || "-"}
                     </td>
                     <td style={{ padding: "1rem", fontSize: "14px", color: "#1f2937", fontWeight: "500" }}>
-                      {aula.ubicacion ? `Piso ${parseInt(aula.ubicacion.toString().charAt(0))}` : "-"}
+                      Piso {aula.piso || "NaN"}
                     </td>
                     <td style={{ padding: "1rem", fontSize: "14px" }}>
                       <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -466,12 +452,10 @@ export default function AulasPage() {
             setShowModal(false);
             setEditingId(null);
             setFormData({ 
-              codigo: "", 
               nombre: "", 
               tipo: "teorica", 
               capacidad: "", 
-              ubicacion: "", 
-              piso: "", 
+              numero_aula: "", 
               activo: "activo" 
             });
           }}
@@ -494,32 +478,6 @@ export default function AulasPage() {
             </h2>
 
             <form onSubmit={handleSaveAula} style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-              {/* Código */}
-              <div>
-                <label style={{ display: "block", fontSize: "14px", fontWeight: "500", color: "#374151", marginBottom: "0.5rem" }}>
-                  Código *
-                </label>
-                <input
-                  type="text"
-                  value={formData.codigo}
-                  onChange={(e) => setFormData({ ...formData, codigo: e.target.value.toUpperCase() })}
-                  placeholder="ej. A101"
-                  required
-                  disabled={editingId !== null}
-                  style={{
-                    width: "100%",
-                    padding: "0.75rem 1rem",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "0.375rem",
-                    fontSize: "14px",
-                    boxSizing: "border-box",
-                    backgroundColor: editingId !== null ? "#f3f4f6" : "#ffffff",
-                    cursor: editingId !== null ? "not-allowed" : "text",
-                  }}
-                />
-                <small style={{ color: "#6b7280" }}>Código único (ej: A101, LAB-02)</small>
-              </div>
-
               {/* Nombre */}
               <div>
                 <label style={{ display: "block", fontSize: "14px", fontWeight: "500", color: "#374151", marginBottom: "0.5rem" }}>
@@ -590,17 +548,19 @@ export default function AulasPage() {
                 <small style={{ color: "#6b7280" }}>Entre 1 y 500 personas</small>
               </div>
 
-              {/* Ubicación */}
+              {/* Número de Aula */}
               <div>
                 <label style={{ display: "block", fontSize: "14px", fontWeight: "500", color: "#374151", marginBottom: "0.5rem" }}>
                   Número de Aula *
                 </label>
                 <input
-                  type="text"
-                  value={formData.ubicacion}
-                  onChange={(e) => setFormData({ ...formData, ubicacion: e.target.value })}
+                  type="number"
+                  value={formData.numero_aula}
+                  onChange={(e) => setFormData({ ...formData, numero_aula: e.target.value })}
                   placeholder="ej. 101, 205, 310"
                   required
+                  min="1"
+                  max="9999"
                   style={{
                     width: "100%",
                     padding: "0.75rem 1rem",
@@ -613,26 +573,6 @@ export default function AulasPage() {
                 <small style={{ color: "#6b7280" }}>
                   Formato: 10-15 (Piso 1), 20-25 (Piso 2), 30-35 (Piso 3), 40-45 (Piso 4)
                 </small>
-              </div>
-
-              {/* Piso - Calculado automáticamente */}
-              <div>
-                <label style={{ display: "block", fontSize: "14px", fontWeight: "500", color: "#374151", marginBottom: "0.5rem" }}>
-                  Piso (automático)
-                </label>
-                <div
-                  style={{
-                    width: "100%",
-                    padding: "0.75rem 1rem",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "0.375rem",
-                    fontSize: "14px",
-                    backgroundColor: "#f3f4f6",
-                    color: "#6b7280",
-                  }}
-                >
-                  {formData.ubicacion ? `Piso ${parseInt(formData.ubicacion.charAt(0))}` : "Ingresa el número de aula"}
-                </div>
               </div>
 
               {/* Estado - OCULTO */}
@@ -665,12 +605,10 @@ export default function AulasPage() {
                     setShowModal(false);
                     setEditingId(null);
                     setFormData({ 
-                      codigo: "", 
                       nombre: "", 
                       tipo: "teorica", 
                       capacidad: "", 
-                      ubicacion: "", 
-                      piso: "", 
+                      numero_aula: "", 
                       activo: "activo" 
                     });
                   }}
