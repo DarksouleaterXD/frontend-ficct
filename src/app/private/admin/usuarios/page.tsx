@@ -55,6 +55,7 @@ interface ResultadoValidacion {
     telefono: string;
     rol: string;
     fecha_nacimiento: string;
+    password?: string;
   };
   valido: boolean;
   errores: string[];
