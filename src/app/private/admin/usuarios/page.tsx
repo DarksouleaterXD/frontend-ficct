@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Plus, Edit2, Trash2, Search, Users, Shield, Key, Mail, User as UserIcon } from "lucide-react";
+import { Plus, Edit2, Trash2, Search, Users, Shield, Mail, User as UserIcon, Upload, Download, FileSpreadsheet, CheckCircle, XCircle } from "lucide-react";
 
 interface Rol {
   id: number;
@@ -44,6 +44,28 @@ interface ApiResponse<T> {
   };
 }
 
+interface ResultadoValidacion {
+  fila: number;
+  datos: {
+    ci: string;
+    nombre: string;
+    apellido_paterno: string;
+    apellido_materno: string;
+    email: string;
+    telefono: string;
+    rol: string;
+    fecha_nacimiento: string;
+  };
+  valido: boolean;
+  errores: string[];
+}
+
+interface EstadisticasImportacion {
+  total: number;
+  validos: number;
+  errores: number;
+}
+
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [rolesDisponibles, setRolesDisponibles] = useState<Rol[]>([]);
@@ -55,9 +77,19 @@ export default function UsuariosPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [showRolesModal, setShowRolesModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [selectedUsuario, setSelectedUsuario] = useState<Usuario | null>(null);
   const [selectedRolesRBAC, setSelectedRolesRBAC] = useState<number[]>([]);
+  
+  // Estados para importación
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [validacionResultados, setValidacionResultados] = useState<ResultadoValidacion[]>([]);
+  const [estadisticas, setEstadisticas] = useState<EstadisticasImportacion | null>(null);
+  const [filtroValidacion, setFiltroValidacion] = useState<"todos" | "validos" | "errores">("todos");
+  const [importando, setImportando] = useState(false);
+  const [pasoImportacion, setPasoImportacion] = useState<1 | 2 | 3>(1); // 1: Upload, 2: Preview, 3: Confirmación
+  const [usuariosCreados, setUsuariosCreados] = useState<Array<{fila: number; usuario_id: number; email: string; password: string}>>([]);
   const [formData, setFormData] = useState({
     nombre: "",
     email: "",
@@ -307,6 +339,193 @@ export default function UsuariosPage() {
     }
   };
 
+  // ============ FUNCIONES DE IMPORTACIÓN ============
+  
+  // Descargar plantilla
+  const handleDescargarPlantilla = async (formato: 'xlsx' | 'csv' = 'xlsx') => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/usuarios/importar/plantilla?formato=${formato}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || "Error al descargar plantilla");
+      }
+
+      const blob = await response.blob();
+      
+      // Verificar que el blob no esté vacío
+      if (blob.size === 0) {
+        throw new Error("El archivo descargado está vacío");
+      }
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `plantilla_usuarios.${formato}`;
+      document.body.appendChild(a);
+      a.click();
+      
+      // Limpiar
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }, 100);
+      
+      setSuccess(`Plantilla ${formato.toUpperCase()} descargada exitosamente`);
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al descargar plantilla");
+      setTimeout(() => setError(null), 5000);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Manejar selección de archivo
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const validExtensions = ['xlsx', 'xls', 'csv'];
+      const fileExtension = file.name.split('.').pop()?.toLowerCase();
+      
+      if (!fileExtension || !validExtensions.includes(fileExtension)) {
+        setError('Formato de archivo inválido. Use Excel (.xlsx, .xls) o CSV (.csv)');
+        return;
+      }
+      
+      if (file.size > 5 * 1024 * 1024) { // 5MB
+        setError('El archivo es muy grande. Máximo 5MB');
+        return;
+      }
+      
+      setImportFile(file);
+      setError(null);
+    }
+  };
+
+  // Validar archivo
+  const handleValidarArchivo = async () => {
+    if (!importFile) {
+      setError('Seleccione un archivo primero');
+      return;
+    }
+
+    setImportando(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append('archivo', importFile);
+
+      const response = await fetch(`${API_URL}/usuarios/importar/validar`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al validar archivo');
+      }
+
+      setValidacionResultados(data.data.resultados);
+      setEstadisticas(data.data.estadisticas);
+      setPasoImportacion(2);
+      setSuccess('Archivo validado correctamente');
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al validar archivo');
+    } finally {
+      setImportando(false);
+    }
+  };
+
+  // Confirmar importación
+  const handleConfirmarImportacion = async () => {
+    if (!importFile) return;
+
+    console.log('🚀 Iniciando confirmación de importación...');
+    setImportando(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("token");
+      const formData = new FormData();
+      formData.append('archivo', importFile);
+      formData.append('generar_passwords', '1');
+      formData.append('enviar_emails', '0');
+
+      console.log('📤 Enviando archivo al backend...');
+      const response = await fetch(`${API_URL}/usuarios/importar/confirmar`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      console.log('📥 Respuesta del backend:', data);
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al importar usuarios');
+      }
+
+      console.log('✅ Usuarios creados:', data.data.usuarios_creados);
+      setUsuariosCreados(data.data.usuarios_creados || []);
+      setSuccess(`${data.data.estadisticas.usuarios_creados} usuario(s) importado(s) exitosamente`);
+      setPasoImportacion(3);
+      
+      // Recargar lista de usuarios INMEDIATAMENTE
+      console.log('🔄 Recargando lista de usuarios...');
+      await fetchUsuarios(1, '');
+      console.log('✅ Lista recargada');
+      
+      // Cerrar modal después de 5 segundos
+      setTimeout(() => {
+        handleCerrarModalImportacion();
+      }, 5000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al importar usuarios');
+    } finally {
+      setImportando(false);
+    }
+  };
+
+  // Cerrar modal de importación
+  const handleCerrarModalImportacion = () => {
+    setShowImportModal(false);
+    setImportFile(null);
+    setValidacionResultados([]);
+    setEstadisticas(null);
+    setPasoImportacion(1);
+    setFiltroValidacion('todos');
+    setUsuariosCreados([]);
+    setError(null);
+    setSuccess(null);
+  };
+
+  // Filtrar resultados de validación
+  const resultadosFiltrados = validacionResultados.filter(r => {
+    if (filtroValidacion === 'validos') return r.valido;
+    if (filtroValidacion === 'errores') return !r.valido;
+    return true;
+  });
+
+  // ============ FIN FUNCIONES DE IMPORTACIÓN ============
+
   // Búsqueda en tiempo real
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -335,30 +554,53 @@ export default function UsuariosPage() {
             Administra usuarios del sistema y asigna roles
           </p>
         </div>
-        <button
-          onClick={() => {
-            setEditingId(null);
-            setFormData({
-              nombre: "",
-              email: "",
-              password: "",
-              rol: "docente",
-              ci: "",
-              apellido: "",
-              telefono: "",
-              activo: true,
-            });
-            setSelectedRolesRBAC([]);
-            setShowModal(true);
-          }}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            padding: "0.75rem 1.5rem",
-            backgroundColor: "#3b82f6",
-            color: "white",
-            border: "none",
+        <div style={{ display: "flex", gap: "0.75rem" }}>
+          <button
+            onClick={() => setShowImportModal(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.75rem 1.5rem",
+              backgroundColor: "#10b981",
+              color: "white",
+              border: "none",
+              borderRadius: "0.5rem",
+              cursor: "pointer",
+              fontSize: "14px",
+              fontWeight: "500",
+              transition: "background-color 0.2s",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#059669")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#10b981")}
+          >
+            <Upload size={18} />
+            Importar Usuarios
+          </button>
+          <button
+            onClick={() => {
+              setEditingId(null);
+              setFormData({
+                nombre: "",
+                email: "",
+                password: "",
+                rol: "docente",
+                ci: "",
+                apellido: "",
+                telefono: "",
+                activo: true,
+              });
+              setSelectedRolesRBAC([]);
+              setShowModal(true);
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.75rem 1.5rem",
+              backgroundColor: "#3b82f6",
+              color: "white",
+              border: "none",
             borderRadius: "0.5rem",
             cursor: "pointer",
             fontSize: "14px",
@@ -369,6 +611,7 @@ export default function UsuariosPage() {
           <Plus size={20} />
           Nuevo Usuario
         </button>
+        </div>
       </div>
 
       {/* Alertas */}
@@ -1030,6 +1273,447 @@ export default function UsuariosPage() {
                 {loading ? "Guardando..." : "Guardar Cambios"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Importación de Usuarios */}
+      {showImportModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "1rem",
+          }}
+          onClick={handleCerrarModalImportacion}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "0.75rem",
+              padding: "2rem",
+              maxWidth: pasoImportacion === 2 ? "1000px" : "600px",
+              width: "100%",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <Upload size={24} style={{ color: "#10b981" }} />
+                <h2 style={{ fontSize: "20px", fontWeight: "bold", color: "#1f2937", margin: 0 }}>
+                  Importar Usuarios en Lote
+                </h2>
+              </div>
+              <button
+                onClick={handleCerrarModalImportacion}
+                style={{
+                  background: "none",
+                  border: "none",
+                  fontSize: "24px",
+                  cursor: "pointer",
+                  color: "#6b7280",
+                  padding: "0",
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Paso 1: Descarga y Upload */}
+            {pasoImportacion === 1 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                <div style={{ backgroundColor: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "0.5rem", padding: "1rem" }}>
+                  <h3 style={{ fontSize: "14px", fontWeight: "600", color: "#1e40af", margin: "0 0 0.5rem 0" }}>
+                    📋 Instrucciones
+                  </h3>
+                  <ol style={{ margin: 0, paddingLeft: "1.25rem", color: "#1e40af", fontSize: "13px", lineHeight: "1.6" }}>
+                    <li>Descarga la plantilla en formato Excel o CSV</li>
+                    <li>Completa los datos de los usuarios (CI, nombre, email, rol, etc.)</li>
+                    <li>Sube el archivo completado para validar</li>
+                    <li>Revisa los resultados y confirma la importación</li>
+                  </ol>
+                </div>
+
+                <div>
+                  <h3 style={{ fontSize: "16px", fontWeight: "600", color: "#374151", marginBottom: "1rem" }}>
+                    Paso 1: Descargar Plantilla
+                  </h3>
+                  <div style={{ display: "flex", gap: "0.75rem" }}>
+                    <button
+                      onClick={() => handleDescargarPlantilla('xlsx')}
+                      disabled={loading}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        padding: "0.75rem 1.25rem",
+                        backgroundColor: loading ? "#9ca3af" : "#10b981",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "0.5rem",
+                        cursor: loading ? "not-allowed" : "pointer",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        flex: 1,
+                        justifyContent: "center",
+                      }}
+                    >
+                      <FileSpreadsheet size={18} />
+                      {loading ? "Descargando..." : "Descargar Excel (.xlsx)"}
+                    </button>
+                    <button
+                      onClick={() => handleDescargarPlantilla('csv')}
+                      disabled={loading}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        padding: "0.75rem 1.25rem",
+                        backgroundColor: loading ? "#9ca3af" : "#059669",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "0.5rem",
+                        cursor: loading ? "not-allowed" : "pointer",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                        flex: 1,
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Download size={18} />
+                      {loading ? "Descargando..." : "Descargar CSV (.csv)"}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 style={{ fontSize: "16px", fontWeight: "600", color: "#374151", marginBottom: "1rem" }}>
+                    Paso 2: Subir Archivo Completado
+                  </h3>
+                  <div
+                    style={{
+                      border: "2px dashed #d1d5db",
+                      borderRadius: "0.5rem",
+                      padding: "2rem",
+                      textAlign: "center",
+                      backgroundColor: "#f9fafb",
+                    }}
+                  >
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      onChange={handleFileSelect}
+                      style={{ display: "none" }}
+                      id="file-upload"
+                    />
+                    <label
+                      htmlFor="file-upload"
+                      style={{
+                        display: "inline-block",
+                        padding: "0.75rem 1.5rem",
+                        backgroundColor: "#3b82f6",
+                        color: "white",
+                        borderRadius: "0.5rem",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                      }}
+                    >
+                      Seleccionar Archivo
+                    </label>
+                    {importFile && (
+                      <div style={{ marginTop: "1rem", color: "#374151", fontSize: "14px" }}>
+                        ✓ Archivo seleccionado: <strong>{importFile.name}</strong>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={handleCerrarModalImportacion}
+                    style={{
+                      padding: "0.75rem 1.5rem",
+                      backgroundColor: "#e5e7eb",
+                      color: "#374151",
+                      border: "none",
+                      borderRadius: "0.375rem",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleValidarArchivo}
+                    disabled={!importFile || importando}
+                    style={{
+                      padding: "0.75rem 1.5rem",
+                      backgroundColor: !importFile || importando ? "#9ca3af" : "#3b82f6",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "0.375rem",
+                      cursor: !importFile || importando ? "not-allowed" : "pointer",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    {importando ? "Validando..." : "Validar Archivo"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Paso 2: Preview de Validación */}
+            {pasoImportacion === 2 && estadisticas && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                <div style={{ display: "flex", gap: "1rem" }}>
+                  <div style={{ flex: 1, backgroundColor: "#dbeafe", padding: "1rem", borderRadius: "0.5rem", border: "1px solid #3b82f6" }}>
+                    <div style={{ fontSize: "24px", fontWeight: "bold", color: "#1e40af" }}>{estadisticas.total}</div>
+                    <div style={{ fontSize: "12px", color: "#1e40af" }}>Total Filas</div>
+                  </div>
+                  <div style={{ flex: 1, backgroundColor: "#d1fae5", padding: "1rem", borderRadius: "0.5rem", border: "1px solid #10b981" }}>
+                    <div style={{ fontSize: "24px", fontWeight: "bold", color: "#065f46" }}>{estadisticas.validos}</div>
+                    <div style={{ fontSize: "12px", color: "#065f46" }}>Válidas</div>
+                  </div>
+                  <div style={{ flex: 1, backgroundColor: "#fee2e2", padding: "1rem", borderRadius: "0.5rem", border: "1px solid #ef4444" }}>
+                    <div style={{ fontSize: "24px", fontWeight: "bold", color: "#991b1b" }}>{estadisticas.errores}</div>
+                    <div style={{ fontSize: "12px", color: "#991b1b" }}>Con Errores</div>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "0.5rem", borderBottom: "2px solid #e5e7eb" }}>
+                  <button
+                    onClick={() => setFiltroValidacion('todos')}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      backgroundColor: filtroValidacion === 'todos' ? "#3b82f6" : "transparent",
+                      color: filtroValidacion === 'todos' ? "white" : "#6b7280",
+                      border: "none",
+                      borderBottom: filtroValidacion === 'todos' ? "2px solid #3b82f6" : "none",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Todos ({estadisticas.total})
+                  </button>
+                  <button
+                    onClick={() => setFiltroValidacion('validos')}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      backgroundColor: filtroValidacion === 'validos' ? "#10b981" : "transparent",
+                      color: filtroValidacion === 'validos' ? "white" : "#6b7280",
+                      border: "none",
+                      borderBottom: filtroValidacion === 'validos' ? "2px solid #10b981" : "none",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    ✓ Válidos ({estadisticas.validos})
+                  </button>
+                  <button
+                    onClick={() => setFiltroValidacion('errores')}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      backgroundColor: filtroValidacion === 'errores' ? "#ef4444" : "transparent",
+                      color: filtroValidacion === 'errores' ? "white" : "#6b7280",
+                      border: "none",
+                      borderBottom: filtroValidacion === 'errores' ? "2px solid #ef4444" : "none",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    ✗ Errores ({estadisticas.errores})
+                  </button>
+                </div>
+
+                <div style={{ maxHeight: "400px", overflowY: "auto", border: "1px solid #e5e7eb", borderRadius: "0.5rem" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                    <thead style={{ backgroundColor: "#f9fafb", position: "sticky", top: 0 }}>
+                      <tr>
+                        <th style={{ padding: "0.75rem", textAlign: "left", borderBottom: "1px solid #e5e7eb", fontWeight: "600" }}>Fila</th>
+                        <th style={{ padding: "0.75rem", textAlign: "left", borderBottom: "1px solid #e5e7eb", fontWeight: "600" }}>CI</th>
+                        <th style={{ padding: "0.75rem", textAlign: "left", borderBottom: "1px solid #e5e7eb", fontWeight: "600" }}>Nombre</th>
+                        <th style={{ padding: "0.75rem", textAlign: "left", borderBottom: "1px solid #e5e7eb", fontWeight: "600" }}>Email</th>
+                        <th style={{ padding: "0.75rem", textAlign: "left", borderBottom: "1px solid #e5e7eb", fontWeight: "600" }}>Rol</th>
+                        <th style={{ padding: "0.75rem", textAlign: "left", borderBottom: "1px solid #e5e7eb", fontWeight: "600" }}>Password</th>
+                        <th style={{ padding: "0.75rem", textAlign: "center", borderBottom: "1px solid #e5e7eb", fontWeight: "600" }}>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {resultadosFiltrados.map((resultado) => (
+                        <tr key={resultado.fila} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                          <td style={{ padding: "0.75rem" }}>{resultado.fila}</td>
+                          <td style={{ padding: "0.75rem" }}>{resultado.datos.ci}</td>
+                          <td style={{ padding: "0.75rem" }}>{resultado.datos.nombre} {resultado.datos.apellido_paterno}</td>
+                          <td style={{ padding: "0.75rem", fontSize: "12px" }}>{resultado.datos.email}</td>
+                          <td style={{ padding: "0.75rem" }}>
+                            <span style={{
+                              padding: "0.25rem 0.5rem",
+                              borderRadius: "0.25rem",
+                              fontSize: "11px",
+                              backgroundColor: resultado.datos.rol === 'admin' ? '#dbeafe' : resultado.datos.rol === 'coordinador' ? '#fef3c7' : '#ddd6fe',
+                              color: resultado.datos.rol === 'admin' ? '#1e40af' : resultado.datos.rol === 'coordinador' ? '#92400e' : '#5b21b6',
+                            }}>
+                              {resultado.datos.rol}
+                            </span>
+                          </td>
+                          <td style={{ padding: "0.75rem", fontSize: "12px", color: "#6b7280", fontFamily: "monospace" }}>
+                            {resultado.datos.password || <span style={{ color: "#9ca3af", fontStyle: "italic" }}>Se generará</span>}
+                          </td>
+                          <td style={{ padding: "0.75rem", textAlign: "center" }}>
+                            {resultado.valido ? (
+                              <CheckCircle size={20} style={{ color: "#10b981" }} />
+                            ) : (
+                              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0.25rem" }}>
+                                <XCircle size={20} style={{ color: "#ef4444" }} />
+                                <div style={{ fontSize: "11px", color: "#ef4444", maxWidth: "200px" }}>
+                                  {resultado.errores.join(', ')}
+                                </div>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style={{ display: "flex", gap: "1rem", justifyContent: "space-between", alignItems: "center" }}>
+                  <button
+                    onClick={() => {
+                      setPasoImportacion(1);
+                      setValidacionResultados([]);
+                      setEstadisticas(null);
+                    }}
+                    style={{
+                      padding: "0.75rem 1.5rem",
+                      backgroundColor: "#e5e7eb",
+                      color: "#374151",
+                      border: "none",
+                      borderRadius: "0.375rem",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    ← Volver
+                  </button>
+                  <div style={{ display: "flex", gap: "1rem" }}>
+                    <button
+                      onClick={handleCerrarModalImportacion}
+                      style={{
+                        padding: "0.75rem 1.5rem",
+                        backgroundColor: "#e5e7eb",
+                        color: "#374151",
+                        border: "none",
+                        borderRadius: "0.375rem",
+                        cursor: "pointer",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleConfirmarImportacion}
+                      disabled={estadisticas.validos === 0 || importando}
+                      style={{
+                        padding: "0.75rem 1.5rem",
+                        backgroundColor: estadisticas.validos === 0 || importando ? "#9ca3af" : "#10b981",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "0.375rem",
+                        cursor: estadisticas.validos === 0 || importando ? "not-allowed" : "pointer",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                      }}
+                    >
+                      {importando ? "Importando..." : `Confirmar Importación (${estadisticas.validos} usuarios)`}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Paso 3: Confirmación */}
+            {pasoImportacion === 3 && (
+              <div style={{ padding: "1.5rem" }}>
+                <div style={{ textAlign: "center", marginBottom: "2rem" }}>
+                  <CheckCircle size={64} style={{ color: "#10b981", margin: "0 auto 1rem" }} />
+                  <h3 style={{ fontSize: "20px", fontWeight: "bold", color: "#1f2937", marginBottom: "0.5rem" }}>
+                    ¡Importación Exitosa!
+                  </h3>
+                  <p style={{ color: "#6b7280" }}>
+                    {usuariosCreados.length} usuario(s) creado(s) correctamente
+                  </p>
+                </div>
+
+                {/* Tabla con credenciales */}
+                {usuariosCreados.length > 0 && (
+                  <div style={{ marginBottom: "2rem" }}>
+                    <h4 style={{ fontSize: "16px", fontWeight: "600", color: "#374151", marginBottom: "1rem" }}>
+                      📋 Credenciales Generadas (Guarde esta información)
+                    </h4>
+                    <div style={{ maxHeight: "300px", overflowY: "auto", border: "1px solid #e5e7eb", borderRadius: "0.5rem", backgroundColor: "#f9fafb" }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                        <thead style={{ backgroundColor: "#374151", color: "white", position: "sticky", top: 0 }}>
+                          <tr>
+                            <th style={{ padding: "0.75rem", textAlign: "left", fontWeight: "600" }}>Fila</th>
+                            <th style={{ padding: "0.75rem", textAlign: "left", fontWeight: "600" }}>Email</th>
+                            <th style={{ padding: "0.75rem", textAlign: "left", fontWeight: "600" }}>Password</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {usuariosCreados.map((usuario) => (
+                            <tr key={usuario.fila} style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "white" }}>
+                              <td style={{ padding: "0.75rem" }}>{usuario.fila}</td>
+                              <td style={{ padding: "0.75rem", fontSize: "12px" }}>{usuario.email}</td>
+                              <td style={{ padding: "0.75rem", fontFamily: "monospace", fontSize: "13px", fontWeight: "600", color: "#059669" }}>
+                                {usuario.password}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <p style={{ fontSize: "12px", color: "#dc2626", marginTop: "0.75rem", fontWeight: "500" }}>
+                      ⚠️ Importante: Copie estas credenciales ahora. No se mostrarán nuevamente.
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ textAlign: "center" }}>
+                  <button
+                    onClick={handleCerrarModalImportacion}
+                    style={{
+                      padding: "0.75rem 2rem",
+                      backgroundColor: "#3b82f6",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "0.375rem",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                    }}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
