@@ -47,6 +47,7 @@ interface PendientesResponse {
   success: boolean;
   data: AsistenciaPendiente[];
   pagination: PaginationData;
+  message?: string;
 }
 
 // ============================================
