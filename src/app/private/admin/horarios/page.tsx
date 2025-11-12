@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
-import { Plus, Edit2, Trash2, Clock, AlertCircle, CheckCircle, Grid3X3, List } from "lucide-react";
+import { Plus, Edit2, Trash2, Clock, AlertCircle, CheckCircle, XCircle } from "lucide-react";
 import { canAccess } from "@/lib/auth";
 
 interface BloqueHorario {
@@ -69,9 +69,7 @@ interface Horario {
   id_aula: number;
   id_docente: number;
   id_bloque: number | null;
-  hora_inicio?: string;
-  hora_fin?: string;
-  dia_semana: string;
+  dias_semana: string[]; // Array de días: ['lunes', 'miercoles', 'viernes']
   activo: boolean;
   descripcion?: string;
   grupo?: Grupo;
@@ -96,15 +94,14 @@ interface FormData {
   id_materia: string;
   id_grupo: string;
   id_aula: string;
-  hora_inicio: string;
-  hora_fin: string;
-  dia_semana: string;
+  id_bloque: string;
+  dias_semana: string[]; // Array de días seleccionados
   activo: boolean;
   descripcion: string;
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
-const DIAS_SEMANA = ["lunes", "martes", "miércoles", "jueves", "viernes"];
+const DIAS_SEMANA = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado"];
 
 export default function HorariosPage() {
   const [horarios, setHorarios] = useState<Horario[]>([]);
@@ -112,28 +109,38 @@ export default function HorariosPage() {
   const [gruposFiltrados, setGruposFiltrados] = useState<Grupo[]>([]);
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [aulas, setAulas] = useState<Aula[]>([]);
+  const [bloques, setBloques] = useState<BloqueHorario[]>([]);
   const [selectedGrupo, setSelectedGrupo] = useState<Grupo | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showModalBloques, setShowModalBloques] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingBloqueId, setEditingBloqueId] = useState<number | null>(null);
   const [filterGrupo, setFilterGrupo] = useState<string>("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
     id_materia: "",
     id_grupo: "",
     id_aula: "",
-    hora_inicio: "",
-    hora_fin: "",
-    dia_semana: "",
+    id_bloque: "",
+    dias_semana: [],
     activo: true,
     descripcion: "",
   });
 
+  const [formDataBloque, setFormDataBloque] = useState({
+    nombre: "",
+    hora_inicio: "",
+    hora_fin: "",
+    numero_bloque: "",
+    activo: true,
+  });
+
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [formErrorsBloque, setFormErrorsBloque] = useState<Record<string, string>>({});
 
   const fetchHorarios = useCallback(async (page = 1) => {
     setLoading(true);
@@ -167,7 +174,7 @@ export default function HorariosPage() {
     const token = localStorage.getItem("token");
 
     try {
-      const [gruposRes, aulasRes, materiasRes] = await Promise.all([
+      const [gruposRes, aulasRes, materiasRes, bloquesRes] = await Promise.all([
         fetch(`${API_URL}/grupos?per_page=999`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -175,6 +182,9 @@ export default function HorariosPage() {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${API_URL}/materias?per_page=999`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/bloques-horarios?per_page=999`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -191,6 +201,10 @@ export default function HorariosPage() {
         const materiasData = await materiasRes.json();
         setMaterias(materiasData.data || []);
       }
+      if (bloquesRes.ok) {
+        const bloquesData = await bloquesRes.json();
+        setBloques(bloquesData.data || []);
+      }
     } catch (err) {
       console.error("Error cargando datos relacionados:", err);
     }
@@ -201,20 +215,15 @@ export default function HorariosPage() {
 
     if (!formData.id_grupo) newErrors.id_grupo = "El grupo es requerido";
     if (!formData.id_aula) newErrors.id_aula = "El aula es requerida";
-    if (!formData.hora_inicio) newErrors.hora_inicio = "La hora de inicio es requerida";
-    if (!formData.hora_fin) newErrors.hora_fin = "La hora de fin es requerida";
-    
-    if (formData.hora_inicio && formData.hora_fin && formData.hora_inicio >= formData.hora_fin) {
-      newErrors.hora_fin = "La hora de fin debe ser posterior a la hora de inicio";
-    }
-    
-    if (!formData.dia_semana) newErrors.dia_semana = "El día es requerido";
+    if (!formData.id_bloque) newErrors.id_bloque = "El bloque horario es requerido";
+    if (formData.dias_semana.length === 0) newErrors.dias_semana = "Debe seleccionar al menos un día";
 
     if (Object.keys(newErrors).length > 0) {
       setFormErrors(newErrors);
       return;
     }
 
+    setLoading(true);
     try {
       const token = localStorage.getItem("token");
       const method = editingId ? "PUT" : "POST";
@@ -229,9 +238,8 @@ export default function HorariosPage() {
         body: JSON.stringify({
           id_grupo: parseInt(formData.id_grupo),
           id_aula: parseInt(formData.id_aula),
-          hora_inicio: formData.hora_inicio,
-          hora_fin: formData.hora_fin,
-          dia_semana: formData.dia_semana,
+          id_bloque: parseInt(formData.id_bloque),
+          dias_semana: formData.dias_semana,
           activo: formData.activo,
           descripcion: formData.descripcion,
         }),
@@ -252,6 +260,8 @@ export default function HorariosPage() {
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar horario");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -306,9 +316,8 @@ export default function HorariosPage() {
       id_materia: idMateria.toString(),
       id_grupo: horario.id_grupo.toString(),
       id_aula: horario.id_aula.toString(),
-      hora_inicio: horario.hora_inicio || "",
-      hora_fin: horario.hora_fin || "",
-      dia_semana: horario.dia_semana,
+      id_bloque: horario.id_bloque?.toString() || "",
+      dias_semana: horario.dias_semana || [],
       activo: horario.activo,
       descripcion: horario.descripcion || "",
     });
@@ -343,9 +352,8 @@ export default function HorariosPage() {
       id_materia: "",
       id_grupo: "",
       id_aula: "",
-      hora_inicio: "",
-      hora_fin: "",
-      dia_semana: "",
+      id_bloque: "",
+      dias_semana: [],
       activo: true,
       descripcion: "",
     });
@@ -353,6 +361,168 @@ export default function HorariosPage() {
     setGruposFiltrados([]);
     setEditingId(null);
     setFormErrors({});
+  };
+
+  const resetFormBloque = () => {
+    setFormDataBloque({
+      nombre: "",
+      hora_inicio: "",
+      hora_fin: "",
+      numero_bloque: "",
+      activo: true,
+    });
+    setEditingBloqueId(null);
+    setFormErrorsBloque({});
+  };
+
+  const handleSaveBloque = async () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formDataBloque.nombre) newErrors.nombre = "El nombre es requerido";
+    if (!formDataBloque.hora_inicio) newErrors.hora_inicio = "La hora de inicio es requerida";
+    if (!formDataBloque.hora_fin) newErrors.hora_fin = "La hora de fin es requerida";
+    if (!formDataBloque.numero_bloque) newErrors.numero_bloque = "El número de bloque es requerido";
+
+    if (formDataBloque.hora_inicio && formDataBloque.hora_fin && formDataBloque.hora_inicio >= formDataBloque.hora_fin) {
+      newErrors.hora_fin = "La hora de fin debe ser posterior a la hora de inicio";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setFormErrorsBloque(newErrors);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const isEditing = editingBloqueId !== null && editingBloqueId > 0;
+      const method = isEditing ? "PUT" : "POST";
+      const url = isEditing 
+        ? `${API_URL}/bloques-horarios/${editingBloqueId}` 
+        : `${API_URL}/bloques-horarios`;
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nombre: formDataBloque.nombre,
+          hora_inicio: formDataBloque.hora_inicio,
+          hora_fin: formDataBloque.hora_fin,
+          numero_bloque: parseInt(formDataBloque.numero_bloque),
+          activo: formDataBloque.activo,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || "Error al guardar bloque horario");
+        return;
+      }
+
+      setSuccess(data.message || "Bloque horario guardado exitosamente");
+      setShowModalBloques(false);
+      resetFormBloque();
+      await fetchRelatedData(); // Recargar bloques
+
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al guardar bloque horario");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditBloque = (bloque: BloqueHorario) => {
+    setEditingBloqueId(bloque.id);
+    setFormDataBloque({
+      nombre: bloque.nombre,
+      hora_inicio: bloque.hora_inicio,
+      hora_fin: bloque.hora_fin,
+      numero_bloque: bloque.numero_bloque.toString(),
+      activo: bloque.activo,
+    });
+    setShowModalBloques(true);
+  };
+
+  const handleDeleteBloque = async (id: number) => {
+    if (!confirm("¿Confirma que desea eliminar este bloque horario?\n\nNOTA: Solo se puede eliminar si no tiene horarios asignados.")) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/bloques-horarios/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Mostrar mensaje específico si hay horarios asociados
+        if (response.status === 400) {
+          setError(data.message || "No se puede eliminar el bloque. Tiene horarios asignados.");
+        } else {
+          setError(data.message || "Error al eliminar bloque horario");
+        }
+        return;
+      }
+
+      setSuccess(data.message || "Bloque horario eliminado exitosamente");
+      await fetchRelatedData(); // Recargar bloques
+
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error de conexión al eliminar bloque horario");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggleBloqueEstado = async (bloque: BloqueHorario) => {
+    const nuevoEstado = !bloque.activo;
+    const accion = nuevoEstado ? "activar" : "desactivar";
+    
+    if (!confirm(`¿Confirma que desea ${accion} este bloque horario?`)) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`${API_URL}/bloques-horarios/${bloque.id}/estado`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          activo: nuevoEstado,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || `Error al ${accion} bloque horario`);
+        return;
+      }
+
+      setSuccess(data.message || `Bloque horario ${nuevoEstado ? 'activado' : 'desactivado'} exitosamente`);
+      await fetchRelatedData(); // Recargar bloques
+
+      setTimeout(() => setSuccess(null), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : `Error al ${accion} bloque horario`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -365,9 +535,9 @@ export default function HorariosPage() {
 
   const canEdit = canAccess(["admin", "coordinador"]);
 
-  // Group horarios by day
+  // Group horarios by day - ahora dias_semana es un array
   const horariosPorDia = DIAS_SEMANA.reduce((acc, dia) => {
-    acc[dia] = horarios.filter((h) => h.dia_semana === dia).sort((a, b) => {
+    acc[dia] = horarios.filter((h) => h.dias_semana && h.dias_semana.includes(dia)).sort((a, b) => {
       const aBloqueNum = a.bloque?.numero_bloque || 0;
       const bBloqueNum = b.bloque?.numero_bloque || 0;
       return aBloqueNum - bBloqueNum;
@@ -439,7 +609,7 @@ export default function HorariosPage() {
                             fontSize: "0.875rem",
                           }}
                         >
-                          {horario.hora_inicio} - {horario.hora_fin}
+                          {horario.bloque?.hora_inicio} - {horario.bloque?.hora_fin}
                         </span>
                       </div>
                     </div>
@@ -604,8 +774,10 @@ export default function HorariosPage() {
                     (e.currentTarget.style.backgroundColor = index % 2 === 0 ? "white" : "#f9fafb")
                   }
                 >
-                  <td style={{ padding: "1rem", fontWeight: "600", color: "#1f2937", textTransform: "capitalize" }}>
-                    {horario.dia_semana}
+                  <td style={{ padding: "1rem", fontWeight: "600", color: "#1f2937" }}>
+                    {horario.dias_semana && horario.dias_semana.length > 0
+                      ? horario.dias_semana.map(d => d.substring(0, 3).toUpperCase()).join(', ')
+                      : 'N/A'}
                   </td>
                   <td
                     style={{
@@ -762,34 +934,60 @@ export default function HorariosPage() {
           </h1>
         </div>
         {canEdit && (
-          <button
-            onClick={() => {
-              resetForm();
-              setShowModal(true);
-            }}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              backgroundColor: "#3b82f6",
-              color: "white",
-              border: "none",
-              borderRadius: "0.5rem",
-              padding: "0.75rem 1rem",
-              fontWeight: "600",
-              cursor: "pointer",
-              transition: "background-color 0.2s ease",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1e40af")}
-            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3b82f6")}
-          >
-            <Plus size={20} />
-            Nuevo Horario
-          </button>
+          <div style={{ display: "flex", gap: "0.75rem" }}>
+            <button
+              onClick={() => {
+                resetFormBloque();
+                setShowModalBloques(true);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                backgroundColor: "#10b981",
+                color: "white",
+                border: "none",
+                borderRadius: "0.5rem",
+                padding: "0.75rem 1rem",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "background-color 0.2s ease",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#059669")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#10b981")}
+            >
+              <Clock size={20} />
+              Gestionar Bloques
+            </button>
+            <button
+              onClick={() => {
+                resetForm();
+                setShowModal(true);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                backgroundColor: "#3b82f6",
+                color: "white",
+                border: "none",
+                borderRadius: "0.5rem",
+                padding: "0.75rem 1rem",
+                fontWeight: "600",
+                cursor: "pointer",
+                transition: "background-color 0.2s ease",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1e40af")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3b82f6")}
+            >
+              <Plus size={20} />
+              Nuevo Horario
+            </button>
+          </div>
         )}
       </div>
 
-      {/* Filter and View Mode */}
+      {/* Filter */}
       <div
         style={{
           display: "flex",
@@ -819,69 +1017,6 @@ export default function HorariosPage() {
             </option>
           ))}
         </select>
-
-        <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem" }}>
-          <button
-            onClick={() => setViewMode("grid")}
-            style={{
-              padding: "0.5rem 1rem",
-              backgroundColor: viewMode === "grid" ? "#3b82f6" : "#e5e7eb",
-              color: viewMode === "grid" ? "white" : "#374151",
-              border: "none",
-              borderRadius: "0.375rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              fontWeight: "600",
-              fontSize: "0.875rem",
-              transition: "background-color 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              if (viewMode !== "grid") {
-                e.currentTarget.style.backgroundColor = "#d1d5db";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (viewMode !== "grid") {
-                e.currentTarget.style.backgroundColor = "#e5e7eb";
-              }
-            }}
-          >
-            <Grid3X3 size={16} />
-            Grid
-          </button>
-          <button
-            onClick={() => setViewMode("list")}
-            style={{
-              padding: "0.5rem 1rem",
-              backgroundColor: viewMode === "list" ? "#3b82f6" : "#e5e7eb",
-              color: viewMode === "list" ? "white" : "#374151",
-              border: "none",
-              borderRadius: "0.375rem",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "0.5rem",
-              fontWeight: "600",
-              fontSize: "0.875rem",
-              transition: "background-color 0.2s ease",
-            }}
-            onMouseEnter={(e) => {
-              if (viewMode !== "list") {
-                e.currentTarget.style.backgroundColor = "#d1d5db";
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (viewMode !== "list") {
-                e.currentTarget.style.backgroundColor = "#e5e7eb";
-              }
-            }}
-          >
-            <List size={16} />
-            Lista
-          </button>
-        </div>
       </div>
 
       {/* Content */}
@@ -909,8 +1044,6 @@ export default function HorariosPage() {
         >
           No hay horarios para mostrar
         </div>
-      ) : viewMode === "grid" ? (
-        renderGridView()
       ) : (
         renderListView()
       )}
@@ -1065,82 +1198,73 @@ export default function HorariosPage() {
                 </p>
               </div>
 
-              {/* Horario */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-                <div>
-                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", color: "#374151", fontSize: "0.875rem" }}>
-                    Hora Inicio *
-                  </label>
-                  <input
-                    type="time"
-                    value={formData.hora_inicio}
-                    onChange={(e) => {
-                      setFormData({ ...formData, hora_inicio: e.target.value });
-                      if (formErrors.hora_inicio) setFormErrors({ ...formErrors, hora_inicio: "" });
-                    }}
-                    style={{
-                      width: "100%",
-                      padding: "0.75rem",
-                      border: `1px solid ${formErrors.hora_inicio ? "#ef4444" : "#d1d5db"}`,
-                      borderRadius: "0.5rem",
-                      fontSize: "0.875rem",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                  {formErrors.hora_inicio && <p style={{ color: "#ef4444", fontSize: "0.75rem", margin: "0.25rem 0 0 0" }}>{formErrors.hora_inicio}</p>}
-                </div>
-                <div>
-                  <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", color: "#374151", fontSize: "0.875rem" }}>
-                    Hora Fin *
-                  </label>
-                  <input
-                    type="time"
-                    value={formData.hora_fin}
-                    onChange={(e) => {
-                      setFormData({ ...formData, hora_fin: e.target.value });
-                      if (formErrors.hora_fin) setFormErrors({ ...formErrors, hora_fin: "" });
-                    }}
-                    style={{
-                      width: "100%",
-                      padding: "0.75rem",
-                      border: `1px solid ${formErrors.hora_fin ? "#ef4444" : "#d1d5db"}`,
-                      borderRadius: "0.5rem",
-                      fontSize: "0.875rem",
-                      boxSizing: "border-box",
-                    }}
-                  />
-                  {formErrors.hora_fin && <p style={{ color: "#ef4444", fontSize: "0.75rem", margin: "0.25rem 0 0 0" }}>{formErrors.hora_fin}</p>}
-                </div>
-              </div>
-
-              {/* Día */}
+              {/* Bloque Horario */}
               <div>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", color: "#374151", fontSize: "0.875rem" }}>
-                  Día *
+                  Bloque Horario *
                 </label>
                 <select
-                  value={formData.dia_semana}
+                  value={formData.id_bloque}
                   onChange={(e) => {
-                    setFormData({ ...formData, dia_semana: e.target.value });
-                    if (formErrors.dia_semana) setFormErrors({ ...formErrors, dia_semana: "" });
+                    setFormData({ ...formData, id_bloque: e.target.value });
+                    if (formErrors.id_bloque) setFormErrors({ ...formErrors, id_bloque: "" });
                   }}
                   style={{
                     width: "100%",
                     padding: "0.75rem",
-                    border: `1px solid ${formErrors.dia_semana ? "#ef4444" : "#d1d5db"}`,
+                    border: `1px solid ${formErrors.id_bloque ? "#ef4444" : "#d1d5db"}`,
                     borderRadius: "0.5rem",
                     fontSize: "0.875rem",
                     boxSizing: "border-box",
                   }}
                 >
-                  <option value="">Seleccionar día</option>
-                  {DIAS_SEMANA.map((dia) => (
-                    <option key={dia} value={dia}>
-                      {dia.charAt(0).toUpperCase() + dia.slice(1)}
-                    </option>
-                  ))}
+                  <option value="">Seleccionar bloque</option>
+                  {bloques
+                    .filter(b => b.activo)
+                    .sort((a, b) => a.numero_bloque - b.numero_bloque)
+                    .map((bloque) => (
+                      <option key={bloque.id} value={bloque.id}>
+                        {bloque.numero_bloque} - {bloque.nombre} ({bloque.hora_inicio} - {bloque.hora_fin})
+                      </option>
+                    ))}
                 </select>
-                {formErrors.dia_semana && <p style={{ color: "#ef4444", fontSize: "0.75rem", margin: "0.25rem 0 0 0" }}>{formErrors.dia_semana}</p>}
+                {formErrors.id_bloque && <p style={{ color: "#ef4444", fontSize: "0.75rem", margin: "0.25rem 0 0 0" }}>{formErrors.id_bloque}</p>}
+              </div>
+
+              {/* Días de la semana (múltiple selección) */}
+              <div>
+                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", color: "#374151", fontSize: "0.875rem" }}>
+                  Días de la Semana *
+                </label>
+                <div style={{ 
+                  display: "grid", 
+                  gridTemplateColumns: "repeat(3, 1fr)", 
+                  gap: "0.5rem",
+                  border: `1px solid ${formErrors.dias_semana ? "#ef4444" : "#d1d5db"}`,
+                  borderRadius: "0.5rem",
+                  padding: "0.75rem",
+                }}>
+                  {DIAS_SEMANA.map((dia) => (
+                    <label key={dia} style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={formData.dias_semana.includes(dia)}
+                        onChange={(e) => {
+                          const newDias = e.target.checked
+                            ? [...formData.dias_semana, dia]
+                            : formData.dias_semana.filter(d => d !== dia);
+                          setFormData({ ...formData, dias_semana: newDias });
+                          if (formErrors.dias_semana) setFormErrors({ ...formErrors, dias_semana: "" });
+                        }}
+                        style={{ width: "1rem", height: "1rem", cursor: "pointer" }}
+                      />
+                      <span style={{ fontSize: "0.875rem", color: "#374151" }}>
+                        {dia.charAt(0).toUpperCase() + dia.slice(1)}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {formErrors.dias_semana && <p style={{ color: "#ef4444", fontSize: "0.75rem", margin: "0.25rem 0 0 0" }}>{formErrors.dias_semana}</p>}
               </div>
 
               {/* Activo */}
@@ -1222,6 +1346,347 @@ export default function HorariosPage() {
               >
                 {loading ? "Guardando..." : (editingId ? "Actualizar" : "Crear")}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Gestionar Bloques */}
+      {showModalBloques && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+            padding: "1rem",
+          }}
+          onClick={() => setShowModalBloques(false)}
+        >
+          <div
+            style={{
+              backgroundColor: "white",
+              borderRadius: "1rem",
+              width: "100%",
+              maxWidth: "900px",
+              maxHeight: "90vh",
+              overflow: "auto",
+              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: "1.5rem" }}>
+              {/* Header */}
+              <h2 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1.5rem", color: "#1f2937" }}>
+                {editingBloqueId ? "Editar Bloque Horario" : "Gestionar Bloques Horarios"}
+              </h2>
+
+              {/* Lista de bloques existentes */}
+              {!editingBloqueId && (
+                <div style={{ marginBottom: "1.5rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                    <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#374151" }}>
+                      Bloques Existentes
+                    </h3>
+                    <button
+                      onClick={() => setEditingBloqueId(0)}
+                      style={{
+                        padding: "0.5rem 1rem",
+                        backgroundColor: "#3b82f6",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "0.375rem",
+                        fontSize: "0.875rem",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                      }}
+                    >
+                      <Plus size={16} style={{ display: "inline", marginRight: "0.25rem" }} />
+                      Nuevo Bloque
+                    </button>
+                  </div>
+                  
+                  <div style={{ display: "grid", gap: "0.75rem" }}>
+                    {bloques.length === 0 ? (
+                      <p style={{ color: "#6b7280", textAlign: "center", padding: "2rem" }}>
+                        No hay bloques horarios registrados
+                      </p>
+                    ) : (
+                      bloques
+                        .sort((a, b) => a.numero_bloque - b.numero_bloque)
+                        .map((bloque) => (
+                          <div
+                            key={bloque.id}
+                            style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              padding: "1rem",
+                              border: "1px solid #e5e7eb",
+                              borderRadius: "0.5rem",
+                              backgroundColor: bloque.activo ? "#f9fafb" : "#fee2e2",
+                            }}
+                          >
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.25rem" }}>
+                                <span style={{ 
+                                  fontWeight: "bold", 
+                                  color: "#1f2937",
+                                  fontSize: "1rem",
+                                }}>
+                                  Bloque {bloque.numero_bloque}: {bloque.nombre}
+                                </span>
+                                {!bloque.activo && (
+                                  <span style={{
+                                    padding: "0.125rem 0.5rem",
+                                    backgroundColor: "#ef4444",
+                                    color: "white",
+                                    borderRadius: "0.25rem",
+                                    fontSize: "0.75rem",
+                                    fontWeight: "600",
+                                  }}>
+                                    Inactivo
+                                  </span>
+                                )}
+                              </div>
+                              <div style={{ color: "#6b7280", fontSize: "0.875rem", fontFamily: "monospace" }}>
+                                {bloque.hora_inicio} - {bloque.hora_fin}
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", gap: "0.5rem" }}>
+                              <button
+                                onClick={() => handleEditBloque(bloque)}
+                                style={{
+                                  padding: "0.5rem",
+                                  backgroundColor: "#60a5fa",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "0.375rem",
+                                  cursor: "pointer",
+                                }}
+                                title="Editar"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleToggleBloqueEstado(bloque)}
+                                style={{
+                                  padding: "0.5rem",
+                                  backgroundColor: bloque.activo ? "#f59e0b" : "#10b981",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "0.375rem",
+                                  cursor: "pointer",
+                                }}
+                                title={bloque.activo ? "Desactivar" : "Activar"}
+                              >
+                                {bloque.activo ? (
+                                  <XCircle size={16} />
+                                ) : (
+                                  <CheckCircle size={16} />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteBloque(bloque.id)}
+                                style={{
+                                  padding: "0.5rem",
+                                  backgroundColor: "#ef4444",
+                                  color: "white",
+                                  border: "none",
+                                  borderRadius: "0.375rem",
+                                  cursor: "pointer",
+                                }}
+                                title="Eliminar (solo si no tiene horarios)"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Formulario de nuevo/editar bloque */}
+              {editingBloqueId !== null && (
+                <div style={{ display: "grid", gap: "1rem", marginBottom: "1.5rem" }}>
+                  <h3 style={{ fontSize: "1.125rem", fontWeight: "600", color: "#374151", marginBottom: "0.5rem" }}>
+                    {editingBloqueId === 0 ? "Crear Nuevo Bloque" : "Editar Bloque"}
+                  </h3>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "1rem" }}>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", color: "#374151", fontSize: "0.875rem" }}>
+                        Nombre del Bloque *
+                      </label>
+                      <input
+                        type="text"
+                        value={formDataBloque.nombre}
+                        onChange={(e) => {
+                          setFormDataBloque({ ...formDataBloque, nombre: e.target.value });
+                          if (formErrorsBloque.nombre) setFormErrorsBloque({ ...formErrorsBloque, nombre: "" });
+                        }}
+                        placeholder="Ej: Primer Bloque, Segundo Bloque"
+                        style={{
+                          width: "100%",
+                          padding: "0.75rem",
+                          border: `1px solid ${formErrorsBloque.nombre ? "#ef4444" : "#d1d5db"}`,
+                          borderRadius: "0.5rem",
+                          fontSize: "0.875rem",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      {formErrorsBloque.nombre && <p style={{ color: "#ef4444", fontSize: "0.75rem", margin: "0.25rem 0 0 0" }}>{formErrorsBloque.nombre}</p>}
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", color: "#374151", fontSize: "0.875rem" }}>
+                        Número *
+                      </label>
+                      <input
+                        type="number"
+                        value={formDataBloque.numero_bloque}
+                        onChange={(e) => {
+                          setFormDataBloque({ ...formDataBloque, numero_bloque: e.target.value });
+                          if (formErrorsBloque.numero_bloque) setFormErrorsBloque({ ...formErrorsBloque, numero_bloque: "" });
+                        }}
+                        placeholder="1"
+                        min="1"
+                        style={{
+                          width: "100%",
+                          padding: "0.75rem",
+                          border: `1px solid ${formErrorsBloque.numero_bloque ? "#ef4444" : "#d1d5db"}`,
+                          borderRadius: "0.5rem",
+                          fontSize: "0.875rem",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      {formErrorsBloque.numero_bloque && <p style={{ color: "#ef4444", fontSize: "0.75rem", margin: "0.25rem 0 0 0" }}>{formErrorsBloque.numero_bloque}</p>}
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                    <div>
+                      <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", color: "#374151", fontSize: "0.875rem" }}>
+                        Hora Inicio *
+                      </label>
+                      <input
+                        type="time"
+                        value={formDataBloque.hora_inicio}
+                        onChange={(e) => {
+                          setFormDataBloque({ ...formDataBloque, hora_inicio: e.target.value });
+                          if (formErrorsBloque.hora_inicio) setFormErrorsBloque({ ...formErrorsBloque, hora_inicio: "" });
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "0.75rem",
+                          border: `1px solid ${formErrorsBloque.hora_inicio ? "#ef4444" : "#d1d5db"}`,
+                          borderRadius: "0.5rem",
+                          fontSize: "0.875rem",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      {formErrorsBloque.hora_inicio && <p style={{ color: "#ef4444", fontSize: "0.75rem", margin: "0.25rem 0 0 0" }}>{formErrorsBloque.hora_inicio}</p>}
+                    </div>
+
+                    <div>
+                      <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", color: "#374151", fontSize: "0.875rem" }}>
+                        Hora Fin *
+                      </label>
+                      <input
+                        type="time"
+                        value={formDataBloque.hora_fin}
+                        onChange={(e) => {
+                          setFormDataBloque({ ...formDataBloque, hora_fin: e.target.value });
+                          if (formErrorsBloque.hora_fin) setFormErrorsBloque({ ...formErrorsBloque, hora_fin: "" });
+                        }}
+                        style={{
+                          width: "100%",
+                          padding: "0.75rem",
+                          border: `1px solid ${formErrorsBloque.hora_fin ? "#ef4444" : "#d1d5db"}`,
+                          borderRadius: "0.5rem",
+                          fontSize: "0.875rem",
+                          boxSizing: "border-box",
+                        }}
+                      />
+                      {formErrorsBloque.hora_fin && <p style={{ color: "#ef4444", fontSize: "0.75rem", margin: "0.25rem 0 0 0" }}>{formErrorsBloque.hora_fin}</p>}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={formDataBloque.activo}
+                        onChange={(e) => setFormDataBloque({ ...formDataBloque, activo: e.target.checked })}
+                        style={{ width: "1rem", height: "1rem", cursor: "pointer" }}
+                      />
+                      <span style={{ fontWeight: "600", color: "#374151", fontSize: "0.875rem" }}>Activo</span>
+                    </label>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "0.75rem" }}>
+                    <button
+                      onClick={() => {
+                        resetFormBloque();
+                        if (bloques.length === 0) setShowModalBloques(false);
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: "0.75rem",
+                        backgroundColor: "#e5e7eb",
+                        color: "#374151",
+                        border: "none",
+                        borderRadius: "0.5rem",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                      }}
+                    >
+                      {bloques.length === 0 ? "Cerrar" : "Cancelar"}
+                    </button>
+                    <button
+                      onClick={handleSaveBloque}
+                      disabled={loading}
+                      style={{
+                        flex: 1,
+                        padding: "0.75rem",
+                        backgroundColor: loading ? "#9ca3af" : "#3b82f6",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "0.5rem",
+                        fontWeight: "600",
+                        cursor: loading ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      {loading ? "Guardando..." : (editingBloqueId === 0 ? "Crear" : "Actualizar")}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Botón cerrar cuando no está editando */}
+              {editingBloqueId === null && (
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <button
+                    onClick={() => setShowModalBloques(false)}
+                    style={{
+                      padding: "0.75rem 1.5rem",
+                      backgroundColor: "#e5e7eb",
+                      color: "#374151",
+                      border: "none",
+                      borderRadius: "0.5rem",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
