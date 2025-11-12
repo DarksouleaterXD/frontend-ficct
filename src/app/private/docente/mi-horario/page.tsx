@@ -1,7 +1,18 @@
 "use client";
 
 import React, { useState, useCallback, useEffect } from "react";
-import { Calendar, Download, AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { 
+  Calendar, 
+  AlertCircle, 
+  CheckCircle, 
+  Clock, 
+  BookOpen, 
+  Users, 
+  DoorOpen, 
+  CalendarDays,
+  FileDown,
+  Info
+} from "lucide-react";
 
 interface Bloque {
   id: number;
@@ -66,6 +77,26 @@ export default function MiHorarioPage() {
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
 
   const diasSemana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes"];
+
+  // Función para formatear hora desde timestamp
+  const formatearHora = (horaString: string): string => {
+    if (!horaString) return '';
+    
+    // Si viene como timestamp ISO (2025-11-12T07:00:00.000000Z)
+    if (horaString.includes('T')) {
+      const timePart = horaString.split('T')[1]; // "07:00:00.000000Z"
+      const hourMin = timePart.split(':').slice(0, 2).join(':'); // "07:00"
+      return hourMin;
+    }
+    
+    // Si viene como HH:MM:SS, extraer solo HH:MM
+    if (horaString.includes(':')) {
+      const partes = horaString.split(':');
+      return `${partes[0]}:${partes[1]}`;
+    }
+    
+    return horaString;
+  };
 
   const fetchMiHorario = useCallback(async (periodoId?: string) => {
     setLoading(true);
@@ -295,8 +326,12 @@ export default function MiHorarioPage() {
               fontWeight: "bold",
               color: "#1f2937",
               margin: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: "0.75rem",
             }}
           >
+            <CalendarDays size={36} color="#3b82f6" />
             Mi Horario Semanal
           </h1>
           {docente && (
@@ -331,7 +366,7 @@ export default function MiHorarioPage() {
             e.currentTarget.style.backgroundColor = "#10b981";
           }}
         >
-          <Download size={20} />
+          <FileDown size={20} />
           Exportar a PDF
         </button>
       </div>
@@ -384,7 +419,7 @@ export default function MiHorarioPage() {
       >
         <label
           style={{
-            display: "block",
+            display: "flex",
             fontSize: "0.875rem",
             fontWeight: "600",
             marginBottom: "0.5rem",
@@ -393,7 +428,7 @@ export default function MiHorarioPage() {
             gap: "0.5rem",
           }}
         >
-          <Calendar size={18} />
+          <Calendar size={18} color="#3b82f6" />
           Selecciona Periodo
         </label>
         <select
@@ -505,42 +540,26 @@ export default function MiHorarioPage() {
               }}
             >
               <thead>
-                <tr style={{ backgroundColor: "#f9fafb", borderBottom: "2px solid #e5e7eb" }}>
-                  <th
-                    style={{
-                      padding: "1rem",
-                      textAlign: "left",
-                      fontSize: "0.875rem",
-                      fontWeight: "600",
-                      color: "#374151",
-                      minWidth: "100px",
-                    }}
-                  >
-                    Bloque
-                  </th>
+                <tr style={{ backgroundColor: "#1f2937", borderBottom: "2px solid #374151" }}>
                   <th
                     style={{
                       padding: "1rem",
                       textAlign: "center",
-                      fontSize: "0.875rem",
-                      fontWeight: "600",
-                      color: "#374151",
-                      minWidth: "80px",
+                      fontSize: "0.9rem",
+                      fontWeight: "700",
+                      color: "#ffffff",
+                      minWidth: "120px",
                     }}
                   >
-                    Inicio
-                  </th>
-                  <th
-                    style={{
-                      padding: "1rem",
-                      textAlign: "center",
-                      fontSize: "0.875rem",
-                      fontWeight: "600",
-                      color: "#374151",
-                      minWidth: "80px",
-                    }}
-                  >
-                    Fin
+                    <div style={{ 
+                      display: "flex", 
+                      alignItems: "center", 
+                      justifyContent: "center", 
+                      gap: "0.5rem" 
+                    }}>
+                      <Clock size={18} />
+                      HORARIO
+                    </div>
                   </th>
                   {diasSemana.map((dia) => (
                     <th
@@ -548,10 +567,12 @@ export default function MiHorarioPage() {
                       style={{
                         padding: "1rem",
                         textAlign: "center",
-                        fontSize: "0.875rem",
-                        fontWeight: "600",
-                        color: "#374151",
-                        minWidth: "150px",
+                        fontSize: "0.9rem",
+                        fontWeight: "700",
+                        color: "#ffffff",
+                        minWidth: "200px",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
                       }}
                     >
                       {dia}
@@ -560,91 +581,148 @@ export default function MiHorarioPage() {
                 </tr>
               </thead>
               <tbody>
-                {grilla.map((fila, idx) => (
-                  <tr
-                    key={idx}
-                    style={{
-                      borderBottom: "1px solid #e5e7eb",
-                      transition: "background-color 0.2s",
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f9fafb")}
-                    onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
-                  >
-                    <td
-                      style={{
-                        padding: "1rem",
-                        fontSize: "0.875rem",
-                        fontWeight: "600",
-                        color: "#1f2937",
-                        backgroundColor: "#f3f4f6",
-                      }}
-                    >
-                      <div>{fila.bloque_nombre}</div>
-                      <div style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.25rem" }}>
-                        #{fila.bloque_numero}
-                      </div>
-                    </td>
-                    <td
-                      style={{
-                        padding: "1rem",
-                        textAlign: "center",
-                        fontSize: "0.875rem",
-                        color: "#6b7280",
-                    }}
-                    >
-                      {fila.hora_inicio}
-                    </td>
-                    <td
-                      style={{
-                        padding: "1rem",
-                        textAlign: "center",
-                        fontSize: "0.875rem",
-                        color: "#6b7280",
-                      }}
-                    >
-                      {fila.hora_fin}
-                    </td>
-                    {diasSemana.map((dia) => {
+                {grilla
+                  .filter((fila) => 
+                    // Solo mostrar filas que tengan al menos una clase
+                    diasSemana.some((dia) => {
                       const clase = fila[dia as keyof FilaGrilla];
-                      const tieneClase = clase && typeof clase === "object" && "materia" in clase;
+                      return clase && typeof clase === "object" && "materia" in clase;
+                    })
+                  )
+                  .map((fila, idx) => {
+                    // Generar un color basado en el nombre de la materia
+                    const getColorForMateria = (materia: string) => {
+                      const colors = [
+                        { bg: "#dbeafe", border: "#3b82f6", text: "#1e40af" }, // Azul
+                        { bg: "#fce7f3", border: "#ec4899", text: "#831843" }, // Rosa
+                        { bg: "#d1fae5", border: "#10b981", text: "#065f46" }, // Verde
+                        { bg: "#fef3c7", border: "#f59e0b", text: "#92400e" }, // Amarillo
+                        { bg: "#e0e7ff", border: "#6366f1", text: "#312e81" }, // Índigo
+                        { bg: "#fce4ec", border: "#f06292", text: "#880e4f" }, // Rosa fuerte
+                      ];
+                      const hash = materia.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                      return colors[hash % colors.length];
+                    };
 
-                      return (
+                    return (
+                      <tr
+                        key={idx}
+                        style={{
+                          borderBottom: "1px solid #e5e7eb",
+                          transition: "background-color 0.2s",
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f9fafb")}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                      >
                         <td
-                          key={`${idx}-${dia}`}
                           style={{
-                            padding: "1rem",
+                            padding: "1.25rem",
+                            fontSize: "0.95rem",
+                            fontWeight: "700",
+                            color: "#1f2937",
+                            backgroundColor: "#f3f4f6",
+                            borderRight: "2px solid #e5e7eb",
                             textAlign: "center",
-                            fontSize: "0.75rem",
+                            whiteSpace: "nowrap",
                           }}
                         >
-                          {tieneClase && clase && typeof clase === "object" && "materia" in clase ? (
-                            <div
+                          {formatearHora(fila.hora_inicio)} - {formatearHora(fila.hora_fin)}
+                        </td>
+                        {diasSemana.map((dia) => {
+                          const clase = fila[dia as keyof FilaGrilla];
+                          const tieneClase = clase && typeof clase === "object" && "materia" in clase;
+
+                          return (
+                            <td
+                              key={`${idx}-${dia}`}
                               style={{
-                                backgroundColor: "#dbeafe",
-                                border: "1px solid #bfdbfe",
-                                borderRadius: "0.375rem",
                                 padding: "0.75rem",
-                                color: "#1e40af",
+                                textAlign: "center",
+                                fontSize: "0.75rem",
+                                backgroundColor: tieneClase ? "#fafafa" : "#ffffff",
                               }}
                             >
-                              <div style={{ fontWeight: "600", marginBottom: "0.25rem" }}>
-                                {clase.materia}
-                              </div>
-                              <div style={{ fontSize: "0.65rem", marginBottom: "0.25rem" }}>
-                                Grupo {clase.grupo} - {clase.paralelo}
-                              </div>
-                              <div style={{ fontSize: "0.65rem", color: "#1e3a8a" }}>
-                                Aula {clase.aula}
-                              </div>
-                            </div>
-                          ) : (
-                            <div style={{ color: "#d1d5db", fontSize: "0.75rem" }}>—</div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
+                              {tieneClase && clase && typeof clase === "object" && "materia" in clase ? (
+                                <div
+                                  style={{
+                                    backgroundColor: getColorForMateria(clase.materia).bg,
+                                    borderLeft: `4px solid ${getColorForMateria(clase.materia).border}`,
+                                    borderRadius: "0.5rem",
+                                    padding: "1rem 0.75rem",
+                                    color: getColorForMateria(clase.materia).text,
+                                    boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                                    transition: "all 0.2s ease",
+                                    cursor: "default",
+                                    minHeight: "80px",
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    justifyContent: "center",
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = "scale(1.02)";
+                                    e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.1)";
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = "scale(1)";
+                                    e.currentTarget.style.boxShadow = "0 2px 4px rgba(0,0,0,0.05)";
+                                  }}
+                                >
+                                  <div style={{ 
+                                    fontWeight: "700", 
+                                    marginBottom: "0.5rem",
+                                    fontSize: "0.85rem",
+                                    lineHeight: "1.2",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "0.4rem"
+                                  }}>
+                                    <BookOpen size={16} />
+                                    {clase.materia}
+                                  </div>
+                                  <div style={{ 
+                                    fontSize: "0.75rem", 
+                                    marginBottom: "0.4rem",
+                                    opacity: 0.9,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "0.35rem"
+                                  }}>
+                                    <Users size={14} />
+                                    Grupo {clase.grupo} - {clase.paralelo}
+                                  </div>
+                                  <div style={{ 
+                                    fontSize: "0.75rem", 
+                                    fontWeight: "600",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    gap: "0.35rem"
+                                  }}>
+                                    <DoorOpen size={14} />
+                                    Aula {clase.aula}
+                                  </div>
+                                </div>
+                              ) : (
+                                <div style={{ 
+                                  color: "#d1d5db", 
+                                  fontSize: "1.25rem",
+                                  padding: "1.5rem",
+                                  minHeight: "80px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center"
+                                }}>
+                                  —
+                                </div>
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
@@ -658,17 +736,116 @@ export default function MiHorarioPage() {
             backgroundColor: "#f9fafb",
             border: "1px solid #e5e7eb",
             borderRadius: "0.75rem",
-            padding: "1rem",
+            padding: "1.5rem",
+            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.05)",
           }}
         >
-          <p style={{ fontSize: "0.875rem", fontWeight: "600", marginBottom: "0.5rem" }}>
-            📌 Leyenda:
-          </p>
-          <ul style={{ fontSize: "0.875rem", color: "#6b7280", margin: 0, paddingLeft: "1.5rem" }}>
-            <li>Las celdas azules muestran tus clases asignadas</li>
-            <li>Cada clase muestra la materia, grupo, paralelo y aula</li>
-            <li>Las celdas vacías indican que no tienes clase en esa franja</li>
-          </ul>
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "0.5rem",
+            marginBottom: "1rem"
+          }}>
+            <Info size={24} color="#3b82f6" />
+            <p style={{ 
+              fontSize: "1rem", 
+              fontWeight: "700", 
+              margin: 0,
+              color: "#1f2937"
+            }}>
+              Información del Horario
+            </p>
+          </div>
+          <div style={{ 
+            display: "grid", 
+            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+            gap: "1rem"
+          }}>
+            <div style={{ 
+              display: "flex", 
+              alignItems: "start", 
+              gap: "0.75rem",
+              backgroundColor: "#ffffff",
+              padding: "1rem",
+              borderRadius: "0.5rem",
+              border: "1px solid #e5e7eb"
+            }}>
+              <BookOpen size={24} color="#3b82f6" />
+              <div>
+                <p style={{ 
+                  fontSize: "0.875rem", 
+                  fontWeight: "600", 
+                  margin: 0,
+                  color: "#1f2937"
+                }}>
+                  Materias asignadas
+                </p>
+                <p style={{ 
+                  fontSize: "0.75rem", 
+                  color: "#6b7280", 
+                  margin: "0.25rem 0 0 0" 
+                }}>
+                  Las tarjetas de colores indican tus clases
+                </p>
+              </div>
+            </div>
+            <div style={{ 
+              display: "flex", 
+              alignItems: "start", 
+              gap: "0.75rem",
+              backgroundColor: "#ffffff",
+              padding: "1rem",
+              borderRadius: "0.5rem",
+              border: "1px solid #e5e7eb"
+            }}>
+              <Users size={24} color="#10b981" />
+              <div>
+                <p style={{ 
+                  fontSize: "0.875rem", 
+                  fontWeight: "600", 
+                  margin: 0,
+                  color: "#1f2937"
+                }}>
+                  Grupo y Paralelo
+                </p>
+                <p style={{ 
+                  fontSize: "0.75rem", 
+                  color: "#6b7280", 
+                  margin: "0.25rem 0 0 0" 
+                }}>
+                  Identificación del grupo de estudiantes
+                </p>
+              </div>
+            </div>
+            <div style={{ 
+              display: "flex", 
+              alignItems: "start", 
+              gap: "0.75rem",
+              backgroundColor: "#ffffff",
+              padding: "1rem",
+              borderRadius: "0.5rem",
+              border: "1px solid #e5e7eb"
+            }}>
+              <DoorOpen size={24} color="#f59e0b" />
+              <div>
+                <p style={{ 
+                  fontSize: "0.875rem", 
+                  fontWeight: "600", 
+                  margin: 0,
+                  color: "#1f2937"
+                }}>
+                  Ubicación del aula
+                </p>
+                <p style={{ 
+                  fontSize: "0.75rem", 
+                  color: "#6b7280", 
+                  margin: "0.25rem 0 0 0" 
+                }}>
+                  Aula donde se imparte la clase
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

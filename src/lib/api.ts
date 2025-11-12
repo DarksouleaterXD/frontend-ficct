@@ -59,6 +59,7 @@ interface UserData {
   token: string;
   rol: string;
   is_admin: boolean;
+  permisos: string[];
 }
 
 // Función específica para login
@@ -68,11 +69,12 @@ export async function login(email: string, password: string) {
     body: JSON.stringify({ email, password }),
   });
 
-  // Si el login es exitoso, guardar el token
+  // Si el login es exitoso, guardar el token y permisos
   if (response.success && response.data?.token) {
     localStorage.setItem("token", response.data.token);
     localStorage.setItem("user", JSON.stringify(response.data.user));
     localStorage.setItem("rol", response.data.rol);
+    localStorage.setItem("permisos", JSON.stringify(response.data.permisos || []));
   }
 
   return response;
@@ -88,6 +90,7 @@ export async function logout() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("rol");
+    localStorage.removeItem("permisos");
   }
 
   return response;

@@ -39,21 +39,30 @@ export default function Sidebar() {
       { label: "Dashboard", href: "/private/admin", icon: <LayoutDashboard size={20} /> },
     ];
 
-    // Admin y Coordinador ven opciones de gestión
-    if (isAdmin() || isCoordinador()) {
+    // Admin ven opciones de gestión en /admin
+    if (isAdmin()) {
       baseItems.push(
         { label: "Periodos", href: "/private/admin/periodos", icon: <Calendar size={20} /> },
         { label: "Materias", href: "/private/admin/materias", icon: <Book size={20} /> },
         { label: "Docentes", href: "/private/admin/docentes", icon: <Users2 size={20} /> },
         { label: "Aulas", href: "/private/admin/aulas", icon: <Building2 size={20} /> },
         { label: "Grupos", href: "/private/admin/grupos", icon: <Users size={20} /> },
-        { label: "Horarios", href: "/private/admin/horarios", icon: <Clock size={20} /> }
+        { label: "Horarios", href: "/private/admin/horarios", icon: <Clock size={20} /> },
+        { label: "Bloques Horarios", href: "/private/admin/bloques-horarios", icon: <Clock size={20} /> }
       );
     }
 
-    // Coordinador - Validar Asistencias
+    // Coordinador ven opciones de gestión en /coordinador
     if (isCoordinador()) {
       baseItems.push(
+        { label: "Periodos", href: "/private/coordinador/periodos", icon: <Calendar size={20} /> },
+        { label: "Materias", href: "/private/coordinador/materias", icon: <Book size={20} /> },
+        { label: "Docentes", href: "/private/coordinador/docentes", icon: <Users2 size={20} /> },
+        { label: "Aulas", href: "/private/coordinador/aulas", icon: <Building2 size={20} /> },
+        { label: "Grupos", href: "/private/coordinador/grupos", icon: <Users size={20} /> },
+        { label: "Horarios", href: "/private/coordinador/horarios", icon: <Clock size={20} /> },
+        { label: "Bloques Horarios", href: "/private/coordinador/bloques-horarios", icon: <Clock size={20} /> },
+        { label: "Carga Horaria", href: "/private/coordinador/carga-horaria", icon: <ClipboardList size={20} /> },
         { label: "Validar Asistencias", href: "/private/coordinador/validar-asistencias", icon: <CheckSquare size={20} /> }
       );
     }
@@ -71,8 +80,14 @@ export default function Sidebar() {
     // Autoridad - Solo lectura
     if (isAutoridad()) {
       baseItems.push(
+        { label: "Periodos", href: "/private/autoridad/periodos", icon: <Calendar size={20} /> },
+        { label: "Materias", href: "/private/autoridad/materias", icon: <Book size={20} /> },
+        { label: "Docentes", href: "/private/autoridad/docentes", icon: <Users2 size={20} /> },
+        { label: "Aulas", href: "/private/autoridad/aulas", icon: <Building2 size={20} /> },
+        { label: "Grupos", href: "/private/autoridad/grupos", icon: <Users size={20} /> },
         { label: "Horarios", href: "/private/autoridad/horarios", icon: <Clock size={20} /> },
-        { label: "Reportes", href: "/private/autoridad/reportes", icon: <ClipboardList size={20} /> }
+        { label: "Carreras", href: "/private/autoridad/carreras", icon: <Award size={20} /> },
+        { label: "Bitácora", href: "/private/autoridad/bitacora", icon: <ClipboardList size={20} /> }
       );
     }
 
@@ -93,6 +108,7 @@ export default function Sidebar() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("rol");
+    localStorage.removeItem("permisos");
     router.push("/");
   };
 
