@@ -683,21 +683,26 @@ export default function BloquesHorariosPage() {
               </button>
               <button
                 onClick={handleSaveBloque}
+                disabled={loading}
                 style={{
                   flex: 1,
                   padding: "0.75rem",
-                  backgroundColor: "#3b82f6",
+                  backgroundColor: loading ? "#9ca3af" : "#3b82f6",
                   color: "white",
                   border: "none",
                   borderRadius: "0.5rem",
                   fontWeight: "600",
-                  cursor: "pointer",
+                  cursor: loading ? "not-allowed" : "pointer",
                   transition: "background-color 0.2s ease",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1e40af")}
-                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3b82f6")}
+                onMouseEnter={(e) => {
+                  if (!loading) e.currentTarget.style.backgroundColor = "#1e40af";
+                }}
+                onMouseLeave={(e) => {
+                  if (!loading) e.currentTarget.style.backgroundColor = "#3b82f6";
+                }}
               >
-                {editingId ? "Actualizar" : "Crear"}
+                {loading ? "Guardando..." : (editingId ? "Actualizar" : "Crear")}
               </button>
             </div>
           </div>

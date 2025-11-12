@@ -51,6 +51,13 @@ export default function Sidebar() {
       );
     }
 
+    // Coordinador - Validar Asistencias
+    if (isCoordinador()) {
+      baseItems.push(
+        { label: "Validar Asistencias", href: "/private/coordinador/validar-asistencias", icon: <CheckSquare size={20} /> }
+      );
+    }
+
     // Solo Admin
     if (isAdmin()) {
       baseItems.push(
@@ -72,8 +79,8 @@ export default function Sidebar() {
     // Docente
     if (isDocente()) {
       baseItems.push(
-        { label: "Mi Horario", href: "/private/docente/horario", icon: <Clock size={20} /> },
-        { label: "Asistencia", href: "/private/docente/asistencia", icon: <CheckSquare size={20} /> }
+        { label: "Mi Horario", href: "/private/docente/mi-horario", icon: <Clock size={20} /> },
+        { label: "Mis Asistencias", href: "/private/docente/asistencias", icon: <CheckSquare size={20} /> }
       );
     }
 

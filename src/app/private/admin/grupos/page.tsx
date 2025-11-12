@@ -4,6 +4,23 @@ import React, { useState, useCallback, useEffect } from "react";
 import { Plus, Edit2, Trash2, Search } from "lucide-react";
 import { canAccess } from "@/lib/auth";
 
+interface Persona {
+  id: number;
+  nombre: string;
+  apellido_paterno: string;
+  apellido_materno: string;
+  ci: string;
+}
+
+interface Docente {
+  id: number;
+  id_persona: number;
+  id_tipo_contrato?: number;
+  id_categoria?: number;
+  estado: boolean;
+  persona?: Persona;
+}
+
 interface Materia {
   id: number;
   nombre: string;
@@ -22,11 +39,13 @@ interface Grupo {
   id: number;
   id_materia: number;
   id_periodo: number;
+  id_docente?: number;
   paralelo: string;
   capacidad: number;
   codigo?: string;
   materia?: Materia;
   periodo?: Periodo;
+  docente?: Docente;
   created_at?: string;
   updated_at?: string;
 }
@@ -46,6 +65,7 @@ interface PaginatedResponse {
 interface FormData {
   id_materia: number | "";
   id_periodo: number | "";
+  id_docente: number | "";
   paralelo: string;
   capacidad: number | "";
   codigo: string;
@@ -57,6 +77,7 @@ export default function GruposPage() {
   const [grupos, setGrupos] = useState<Grupo[]>([]);
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
+  const [docentes, setDocentes] = useState<Docente[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -68,6 +89,7 @@ export default function GruposPage() {
   const [formData, setFormData] = useState<FormData>({
     id_materia: "",
     id_periodo: "",
+    id_docente: "",
     paralelo: "",
     capacidad: "",
     codigo: "",
@@ -103,6 +125,18 @@ export default function GruposPage() {
           setPeriodos(Array.isArray(data.data) ? data.data : []);
         } else {
           console.error("Error al cargar periodos:", periodosRes.status);
+        }
+
+        // Cargar docentes
+        const docentesRes = await fetch(`${API_URL}/docentes?per_page=100`, {
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        });
+        if (docentesRes.ok) {
+          const data = await docentesRes.json();
+          console.log("Docentes cargados:", data.data);
+          setDocentes(Array.isArray(data.data) ? data.data : []);
+        } else {
+          console.error("Error al cargar docentes:", docentesRes.status);
         }
       } catch (err) {
         console.error("Error cargando datos iniciales:", err);
@@ -162,6 +196,7 @@ export default function GruposPage() {
       return;
     }
 
+    setLoading(true);
     try {
       const token = localStorage.getItem("token");
       const method = editingId ? "PUT" : "POST";
@@ -191,6 +226,8 @@ export default function GruposPage() {
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar grupo");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -227,6 +264,7 @@ export default function GruposPage() {
     setFormData({
       id_materia: grupo.id_materia,
       id_periodo: grupo.id_periodo,
+      id_docente: grupo.id_docente || "",
       paralelo: grupo.paralelo,
       capacidad: grupo.capacidad,
       codigo: grupo.codigo || "",
@@ -255,6 +293,7 @@ export default function GruposPage() {
     setFormData({
       id_materia: "",
       id_periodo: "",
+      id_docente: "",
       paralelo: "",
       capacidad: "",
       codigo: "",
@@ -458,6 +497,15 @@ export default function GruposPage() {
                     }}>
                       Capacidad
                     </th>
+                    <th style={{
+                      padding: "1rem",
+                      textAlign: "left",
+                      fontSize: "0.875rem",
+                      fontWeight: "600",
+                      color: "#374151",
+                    }}>
+                      Docente
+                    </th>
                     {canEdit && (
                       <th style={{
                         padding: "1rem",
@@ -514,6 +562,15 @@ export default function GruposPage() {
                         color: "#374151",
                       }}>
                         {grupo.capacidad} est.
+                      </td>
+                      <td style={{
+                        padding: "1rem",
+                        fontSize: "0.875rem",
+                        color: "#374151",
+                      }}>
+                        {grupo.docente?.persona 
+                          ? `${grupo.docente.persona.nombre} ${grupo.docente.persona.apellido_paterno || ''} ${grupo.docente.persona.apellido_materno || ''}`.trim()
+                          : "Sin asignar"}
                       </td>
                       {canEdit && (
                         <td style={{
@@ -753,6 +810,46 @@ export default function GruposPage() {
                 </select>
               </div>
 
+              {/* Docente */}
+              <div>
+                <label style={{
+                  display: "block",
+                  fontSize: "0.875rem",
+                  fontWeight: "600",
+                  marginBottom: "0.5rem",
+                  color: "#374151",
+                }}>
+                  Docente (Opcional)
+                </label>
+                <select
+                  value={formData.id_docente}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      id_docente: e.target.value ? parseInt(e.target.value) : "",
+                    })
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "0.5rem",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "0.375rem",
+                    fontSize: "0.875rem",
+                    backgroundColor: "#ffffff",
+                  }}
+                >
+                  <option value="">Sin asignar</option>
+                  {docentes.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.persona 
+                        ? `${d.persona.nombre} ${d.persona.apellido_paterno} ${d.persona.apellido_materno}`
+                        : `Docente ${d.id}`
+                      }
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Paralelo */}
               <div>
                 <label style={{
@@ -854,24 +951,25 @@ export default function GruposPage() {
               </button>
               <button
                 onClick={handleSaveGrupo}
+                disabled={loading}
                 style={{
                   padding: "0.5rem 1rem",
-                  backgroundColor: "#3b82f6",
+                  backgroundColor: loading ? "#9ca3af" : "#3b82f6",
                   color: "white",
                   border: "none",
                   borderRadius: "0.375rem",
-                  cursor: "pointer",
+                  cursor: loading ? "not-allowed" : "pointer",
                   fontWeight: "600",
                   transition: "background-color 0.2s",
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = "#1e40af")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.backgroundColor = "#3b82f6")
-                }
+                onMouseEnter={(e) => {
+                  if (!loading) e.currentTarget.style.backgroundColor = "#1e40af";
+                }}
+                onMouseLeave={(e) => {
+                  if (!loading) e.currentTarget.style.backgroundColor = "#3b82f6";
+                }}
               >
-                Guardar
+                {loading ? "Guardando..." : "Guardar"}
               </button>
             </div>
           </div>

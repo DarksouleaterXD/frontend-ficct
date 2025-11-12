@@ -12,6 +12,15 @@ interface Docente {
   estado: "activo" | "inactivo";
   created_at?: string;
   updated_at?: string;
+  persona?: {
+    id: number;
+    nombre: string;
+    apellido_paterno: string;
+    apellido_materno: string;
+    ci: string;
+    correo: string;
+    telefono?: string;
+  };
 }
 
 interface PaginatedResponse {
@@ -36,6 +45,8 @@ export default function DocentesPage() {
   const [formData, setFormData] = useState({
     ci: "",
     nombre: "",
+    apellido_paterno: "",
+    apellido_materno: "",
     correo: "",
     telefono: "",
     contrasena: "",
@@ -82,7 +93,7 @@ export default function DocentesPage() {
 
     try {
       // Validaciones
-      if (!formData.ci || !formData.nombre || !formData.correo) {
+      if (!formData.ci || !formData.nombre || !formData.apellido_paterno || !formData.correo) {
         throw new Error("Campos obligatorios incompletos");
       }
 
@@ -118,7 +129,7 @@ export default function DocentesPage() {
       setSuccess(editingId ? "Docente actualizado correctamente" : "Docente creado correctamente");
       setShowModal(false);
       setEditingId(null);
-      setFormData({ ci: "", nombre: "", correo: "", telefono: "", contrasena: "", estado: "activo" });
+      setFormData({ ci: "", nombre: "", apellido_paterno: "", apellido_materno: "", correo: "", telefono: "", contrasena: "", estado: "activo" });
       setTimeout(() => {
         setSuccess(null);
         fetchDocentes(1, searchTerm);
@@ -196,7 +207,9 @@ export default function DocentesPage() {
   const handleEditDocente = (docente: Docente) => {
     setFormData({
       ci: docente.ci,
-      nombre: docente.nombre,
+      nombre: docente.persona?.nombre || docente.nombre,
+      apellido_paterno: docente.persona?.apellido_paterno || "",
+      apellido_materno: docente.persona?.apellido_materno || "",
       correo: docente.correo,
       telefono: docente.telefono,
       contrasena: "",
@@ -232,7 +245,7 @@ export default function DocentesPage() {
         <button
           onClick={() => {
             setEditingId(null);
-            setFormData({ ci: "", nombre: "", correo: "", telefono: "", contrasena: "", estado: "activo" });
+            setFormData({ ci: "", nombre: "", apellido_paterno: "", apellido_materno: "", correo: "", telefono: "", contrasena: "", estado: "activo" });
             setShowModal(true);
           }}
           style={{
@@ -370,7 +383,12 @@ export default function DocentesPage() {
                   {docentes.map((docente) => (
                     <tr key={docente.id} style={{ borderBottom: "1px solid #e5e7eb" }}>
                       <td style={{ padding: "1rem", color: "#1f2937", fontSize: "14px" }}>{docente.ci}</td>
-                      <td style={{ padding: "1rem", color: "#1f2937", fontSize: "14px" }}>{docente.nombre}</td>
+                      <td style={{ padding: "1rem", color: "#1f2937", fontSize: "14px" }}>
+                        {docente.persona 
+                          ? `${docente.persona.nombre} ${docente.persona.apellido_paterno} ${docente.persona.apellido_materno || ''}`.trim()
+                          : docente.nombre
+                        }
+                      </td>
                       <td style={{ padding: "1rem", color: "#1f2937", fontSize: "14px" }}>{docente.correo}</td>
                       <td style={{ padding: "1rem", color: "#1f2937", fontSize: "14px", fontFamily: "monospace" }}>{docente.telefono || "—"}</td>
                       <td style={{ padding: "1rem" }}>
@@ -589,7 +607,7 @@ export default function DocentesPage() {
                   type="text"
                   value={formData.nombre}
                   onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  placeholder="Ej: Juan García López"
+                  placeholder="Ej: Juan"
                   style={{
                     width: "100%",
                     padding: "0.75rem",
@@ -599,6 +617,47 @@ export default function DocentesPage() {
                     boxSizing: "border-box",
                   }}
                   required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "14px", fontWeight: "600", color: "#374151", marginBottom: "0.5rem" }}>
+                  Apellido Paterno *
+                </label>
+                <input
+                  type="text"
+                  value={formData.apellido_paterno}
+                  onChange={(e) => setFormData({ ...formData, apellido_paterno: e.target.value })}
+                  placeholder="Ej: García"
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "0.5rem",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "14px", fontWeight: "600", color: "#374151", marginBottom: "0.5rem" }}>
+                  Apellido Materno (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.apellido_materno}
+                  onChange={(e) => setFormData({ ...formData, apellido_materno: e.target.value })}
+                  placeholder="Ej: López"
+                  style={{
+                    width: "100%",
+                    padding: "0.75rem",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "0.5rem",
+                    fontSize: "14px",
+                    boxSizing: "border-box",
+                  }}
                 />
               </div>
 

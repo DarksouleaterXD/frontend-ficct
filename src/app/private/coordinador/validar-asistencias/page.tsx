@@ -1,0 +1,630 @@
+"use client";
+
+import React, { useState, useEffect } from "react";
+import {
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Clock,
+  User,
+  BookOpen,
+  Calendar,
+  Filter,
+  Loader2,
+  Eye,
+  ThumbsUp,
+  ThumbsDown,
+  FileText,
+  Download,
+} from "lucide-react";
+
+// ============================================
+// INTERFACES
+// ============================================
+
+interface AsistenciaPendiente {
+  id: number;
+  docente: string;
+  materia: string;
+  fecha: string;
+  hora_clase: string;
+  hora_marcado: string;
+  estado: "presente" | "ausente" | "retardo" | "justificado";
+  metodo: "formulario" | "qr";
+  observacion: string | null;
+  evidencia_url: string | null;
+  es_retardo: boolean;
+}
+
+interface PaginationData {
+  total: number;
+  per_page: number;
+  current_page: number;
+  last_page: number;
+}
+
+interface PendientesResponse {
+  success: boolean;
+  data: AsistenciaPendiente[];
+  pagination: PaginationData;
+}
+
+// ============================================
+// COMPONENTE PRINCIPAL
+// ============================================
+
+export default function ValidarAsistenciasPage() {
+  const [asistencias, setAsistencias] = useState<AsistenciaPendiente[]>([]);
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<PaginationData | null>(null);
+
+  // Filtros
+  const [fechaDesde, setFechaDesde] = useState("");
+  const [fechaHasta, setFechaHasta] = useState("");
+  const [filtroEstado, setFiltroEstado] = useState<string>("todos");
+
+  // Modal de validación
+  const [modalAbierto, setModalAbierto] = useState(false);
+  const [asistenciaSeleccionada, setAsistenciaSeleccionada] = useState<AsistenciaPendiente | null>(null);
+  const [accionValidacion, setAccionValidacion] = useState<"aprobar" | "rechazar">("aprobar");
+  const [observacionValidacion, setObservacionValidacion] = useState("");
+  const [enviando, setEnviando] = useState(false);
+
+  // Cargar pendientes al montar
+  useEffect(() => {
+    cargarPendientes();
+  }, []);
+
+  // ============================================
+  // FUNCIONES
+  // ============================================
+
+  const cargarPendientes = async (pagina = 1) => {
+    setCargando(true);
+    setError(null);
+
+    try {
+      const token = localStorage.getItem("token");
+      
+      // Construir query params
+      const params = new URLSearchParams();
+      if (fechaDesde) params.append("fecha_desde", fechaDesde);
+      if (fechaHasta) params.append("fecha_hasta", fechaHasta);
+      if (filtroEstado !== "todos") params.append("estado", filtroEstado);
+      params.append("page", pagina.toString());
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/asistencias/pendientes?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || `Error ${response.status}: ${response.statusText}`);
+      }
+
+      const data: PendientesResponse = await response.json();
+
+      if (data.success) {
+        setAsistencias(data.data);
+        setPagination(data.pagination);
+      } else {
+        setError(data.message || "Error al cargar asistencias pendientes");
+      }
+    } catch (err: any) {
+      console.error("Error cargando asistencias:", err);
+      setError(err.message || "Error de conexión. Por favor, intente nuevamente.");
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  const abrirModalValidar = (asistencia: AsistenciaPendiente, accion: "aprobar" | "rechazar") => {
+    setAsistenciaSeleccionada(asistencia);
+    setAccionValidacion(accion);
+    setObservacionValidacion("");
+    setModalAbierto(true);
+  };
+
+  const cerrarModal = () => {
+    setModalAbierto(false);
+    setAsistenciaSeleccionada(null);
+    setObservacionValidacion("");
+  };
+
+  const confirmarValidacion = async () => {
+    if (!asistenciaSeleccionada) return;
+
+    setEnviando(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/asistencias/${asistenciaSeleccionada.id}/validar`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            validado: accionValidacion === "aprobar",
+            observacion_validacion: observacionValidacion,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        alert(`✅ ${data.message}`);
+        cerrarModal();
+        cargarPendientes(); // Recargar lista
+      } else {
+        alert(`❌ Error: ${data.message || "No se pudo validar la asistencia"}`);
+      }
+    } catch (err) {
+      alert("❌ Error de conexión. Por favor, intente nuevamente.");
+      console.error(err);
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  const aplicarFiltros = () => {
+    cargarPendientes(1);
+  };
+
+  const limpiarFiltros = () => {
+    setFechaDesde("");
+    setFechaHasta("");
+    setFiltroEstado("todos");
+    setTimeout(() => cargarPendientes(1), 100);
+  };
+
+  // ============================================
+  // HELPERS
+  // ============================================
+
+  const getEstadoColor = (estado: string) => {
+    switch (estado) {
+      case "presente":
+        return "text-green-700 bg-green-100";
+      case "retardo":
+        return "text-yellow-700 bg-yellow-100";
+      case "ausente":
+        return "text-red-700 bg-red-100";
+      case "justificado":
+        return "text-blue-700 bg-blue-100";
+      default:
+        return "text-gray-700 bg-gray-100";
+    }
+  };
+
+  const getEstadoIcon = (estado: string) => {
+    switch (estado) {
+      case "presente":
+        return <CheckCircle className="w-5 h-5" />;
+      case "retardo":
+        return <AlertTriangle className="w-5 h-5" />;
+      case "ausente":
+        return <XCircle className="w-5 h-5" />;
+      case "justificado":
+        return <FileText className="w-5 h-5" />;
+      default:
+        return null;
+    }
+  };
+
+  const formatearFecha = (fecha: string) => {
+    return new Date(fecha).toLocaleDateString("es-ES", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  // ============================================
+  // RENDER
+  // ============================================
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      {/* Header */}
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">✅ Validar Asistencias</h1>
+        <p className="text-gray-600">Revisar y aprobar las asistencias registradas por los docentes</p>
+      </div>
+
+      {/* Filtros */}
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <Filter className="w-5 h-5 text-gray-600" />
+          <h2 className="text-lg font-semibold text-gray-900">Filtros</h2>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Fecha Desde */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Fecha Desde</label>
+            <input
+              type="date"
+              value={fechaDesde}
+              onChange={(e) => setFechaDesde(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Fecha Hasta */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Fecha Hasta</label>
+            <input
+              type="date"
+              value={fechaHasta}
+              onChange={(e) => setFechaHasta(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          {/* Estado */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Estado</label>
+            <select
+              value={filtroEstado}
+              onChange={(e) => setFiltroEstado(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="todos">Todos</option>
+              <option value="presente">Presente</option>
+              <option value="retardo">Retardo</option>
+              <option value="ausente">Ausente</option>
+              <option value="justificado">Justificado</option>
+            </select>
+          </div>
+
+          {/* Botones */}
+          <div className="flex flex-col gap-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2 invisible">Acciones</label>
+            <div className="flex gap-2">
+              <button
+                onClick={aplicarFiltros}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+              >
+                Aplicar
+              </button>
+              <button
+                onClick={limpiarFiltros}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+              >
+                Limpiar
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Estadísticas Rápidas */}
+      {pagination && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <p className="text-blue-900 font-semibold">
+            📊 Total de asistencias pendientes: <span className="text-blue-600">{pagination.total}</span>
+          </p>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-800">
+          <AlertTriangle className="w-5 h-5" />
+          {error}
+        </div>
+      )}
+
+      {/* Loading */}
+      {cargando && (
+        <div className="flex justify-center items-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        </div>
+      )}
+
+      {/* Lista Vacía */}
+      {!cargando && asistencias.length === 0 && (
+        <div className="text-center py-12 bg-white rounded-xl shadow-sm">
+          <CheckCircle className="w-16 h-16 mx-auto text-green-400 mb-4" />
+          <p className="text-gray-600 text-lg">✅ No hay asistencias pendientes de validación</p>
+          <p className="text-gray-500 text-sm mt-2">Todas las asistencias han sido revisadas</p>
+        </div>
+      )}
+
+      {/* Tabla de Asistencias */}
+      {!cargando && asistencias.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Docente
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Materia
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Fecha
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Hora Clase
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Hora Marcado
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Estado
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Método
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                    Acciones
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {asistencias.map((asistencia) => (
+                  <tr key={asistencia.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <User className="w-4 h-4 text-gray-400" />
+                        <span className="font-medium text-gray-900">{asistencia.docente}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-gray-400" />
+                        <span className="text-gray-700">{asistencia.materia}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <span className="text-gray-700">{formatearFecha(asistencia.fecha)}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-gray-700">{asistencia.hora_clase}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        <span
+                          className={`font-medium ${
+                            asistencia.es_retardo ? "text-yellow-600" : "text-green-600"
+                          }`}
+                        >
+                          {asistencia.hora_marcado}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-semibold ${getEstadoColor(
+                          asistencia.estado
+                        )}`}
+                      >
+                        {getEstadoIcon(asistencia.estado)}
+                        {asistencia.estado.charAt(0).toUpperCase() + asistencia.estado.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm text-gray-600 capitalize">{asistencia.metodo}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex gap-2 justify-center">
+                        <button
+                          onClick={() => abrirModalValidar(asistencia, "aprobar")}
+                          className="p-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                          title="Aprobar"
+                        >
+                          <ThumbsUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => abrirModalValidar(asistencia, "rechazar")}
+                          className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
+                          title="Rechazar"
+                        >
+                          <ThumbsDown className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Paginación */}
+          {pagination && pagination.last_page > 1 && (
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                Mostrando {(pagination.current_page - 1) * pagination.per_page + 1} a{" "}
+                {Math.min(pagination.current_page * pagination.per_page, pagination.total)} de {pagination.total}{" "}
+                resultados
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => cargarPendientes(pagination.current_page - 1)}
+                  disabled={pagination.current_page === 1}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  Anterior
+                </button>
+                <span className="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                  {pagination.current_page} / {pagination.last_page}
+                </span>
+                <button
+                  onClick={() => cargarPendientes(pagination.current_page + 1)}
+                  disabled={pagination.current_page === pagination.last_page}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400"
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* MODAL DE VALIDACIÓN */}
+      {modalAbierto && asistenciaSeleccionada && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              {accionValidacion === "aprobar" ? "✅ Aprobar Asistencia" : "❌ Rechazar Asistencia"}
+            </h2>
+
+            {/* Detalles de la Asistencia */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6 space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-gray-600">Docente</p>
+                  <p className="font-semibold text-gray-900">{asistenciaSeleccionada.docente}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Materia</p>
+                  <p className="font-semibold text-gray-900">{asistenciaSeleccionada.materia}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Fecha</p>
+                  <p className="font-semibold text-gray-900">
+                    {formatearFecha(asistenciaSeleccionada.fecha)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Método</p>
+                  <p className="font-semibold text-gray-900 capitalize">{asistenciaSeleccionada.metodo}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4 pt-3 border-t border-gray-200">
+                <div>
+                  <p className="text-sm text-gray-600">Hora Clase</p>
+                  <p className="font-semibold text-gray-900">{asistenciaSeleccionada.hora_clase}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Hora Marcado</p>
+                  <p
+                    className={`font-semibold ${
+                      asistenciaSeleccionada.es_retardo ? "text-yellow-600" : "text-green-600"
+                    }`}
+                  >
+                    {asistenciaSeleccionada.hora_marcado}
+                    {asistenciaSeleccionada.es_retardo && " ⏰"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Estado</p>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-sm font-semibold ${getEstadoColor(
+                      asistenciaSeleccionada.estado
+                    )}`}
+                  >
+                    {getEstadoIcon(asistenciaSeleccionada.estado)}
+                    {asistenciaSeleccionada.estado}
+                  </span>
+                </div>
+              </div>
+
+              {asistenciaSeleccionada.observacion && (
+                <div className="pt-3 border-t border-gray-200">
+                  <p className="text-sm text-gray-600 mb-1">Observación del Docente</p>
+                  <p className="text-gray-900 bg-white p-3 rounded border border-gray-200">
+                    {asistenciaSeleccionada.observacion}
+                  </p>
+                </div>
+              )}
+
+              {asistenciaSeleccionada.evidencia_url && (
+                <div className="pt-3 border-t border-gray-200">
+                  <p className="text-sm text-gray-600 mb-2">Evidencia</p>
+                  <a
+                    href={`${process.env.NEXT_PUBLIC_API_URL}/storage/${asistenciaSeleccionada.evidencia_url}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200"
+                  >
+                    <Download className="w-4 h-4" />
+                    Ver/Descargar Evidencia
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* Observación del Coordinador */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Observación de Validación {accionValidacion === "rechazar" && "*"}
+              </label>
+              <textarea
+                value={observacionValidacion}
+                onChange={(e) => setObservacionValidacion(e.target.value)}
+                maxLength={500}
+                rows={4}
+                placeholder={
+                  accionValidacion === "aprobar"
+                    ? "Ej: Asistencia verificada correctamente..."
+                    : "Ej: Motivo del rechazo..."
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">{observacionValidacion.length}/500 caracteres</p>
+            </div>
+
+            {/* Botones */}
+            <div className="flex gap-3">
+              <button
+                onClick={cerrarModal}
+                disabled={enviando}
+                className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:bg-gray-100 font-semibold"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarValidacion}
+                disabled={enviando}
+                className={`flex-1 px-4 py-3 text-white rounded-lg font-semibold flex items-center justify-center gap-2 ${
+                  accionValidacion === "aprobar"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-red-600 hover:bg-red-700"
+                } disabled:bg-gray-400`}
+              >
+                {enviando ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Procesando...
+                  </>
+                ) : accionValidacion === "aprobar" ? (
+                  <>
+                    <ThumbsUp className="w-5 h-5" />
+                    Aprobar Asistencia
+                  </>
+                ) : (
+                  <>
+                    <ThumbsDown className="w-5 h-5" />
+                    Rechazar Asistencia
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

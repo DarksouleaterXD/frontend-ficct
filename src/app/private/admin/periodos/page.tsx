@@ -941,24 +941,25 @@ export default function PeriodosPage() {
               </button>
               <button
                 onClick={handleSavePeriodo}
+                disabled={loading}
                 style={{
                   padding: "0.5rem 1rem",
-                  backgroundColor: "#3b82f6",
+                  backgroundColor: loading ? "#9ca3af" : "#3b82f6",
                   color: "white",
                   border: "none",
                   borderRadius: "0.375rem",
-                  cursor: "pointer",
+                  cursor: loading ? "not-allowed" : "pointer",
                   fontWeight: "600",
                   transition: "background-color 0.2s",
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.backgroundColor = "#1e40af")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.backgroundColor = "#3b82f6")
-                }
+                onMouseEnter={(e) => {
+                  if (!loading) e.currentTarget.style.backgroundColor = "#1e40af";
+                }}
+                onMouseLeave={(e) => {
+                  if (!loading) e.currentTarget.style.backgroundColor = "#3b82f6";
+                }}
               >
-                Guardar
+                {loading ? "Guardando..." : "Guardar"}
               </button>
             </div>
           </div>
