@@ -1657,60 +1657,300 @@ export default function UsuariosPage() {
                   <h3 style={{ fontSize: "20px", fontWeight: "bold", color: "#1f2937", marginBottom: "0.5rem" }}>
                     ¡Importación Exitosa!
                   </h3>
-                  <p style={{ color: "#6b7280" }}>
-                    {usuariosCreados.length} usuario(s) creado(s) correctamente
+                  <p style={{ color: "#6b7280", fontSize: "15px" }}>
+                    {usuariosCreados.length} usuario(s) creado(s) correctamente en el sistema
                   </p>
                 </div>
 
-                {/* Tabla con credenciales */}
-                {usuariosCreados.length > 0 && (
-                  <div style={{ marginBottom: "2rem" }}>
-                    <h4 style={{ fontSize: "16px", fontWeight: "600", color: "#374151", marginBottom: "1rem" }}>
-                      📋 Credenciales Generadas (Guarde esta información)
-                    </h4>
-                    <div style={{ maxHeight: "300px", overflowY: "auto", border: "1px solid #e5e7eb", borderRadius: "0.5rem", backgroundColor: "#f9fafb" }}>
-                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-                        <thead style={{ backgroundColor: "#374151", color: "white", position: "sticky", top: 0 }}>
-                          <tr>
-                            <th style={{ padding: "0.75rem", textAlign: "left", fontWeight: "600" }}>Fila</th>
-                            <th style={{ padding: "0.75rem", textAlign: "left", fontWeight: "600" }}>Email</th>
-                            <th style={{ padding: "0.75rem", textAlign: "left", fontWeight: "600" }}>Password</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {usuariosCreados.map((usuario) => (
-                            <tr key={usuario.fila} style={{ borderBottom: "1px solid #e5e7eb", backgroundColor: "white" }}>
-                              <td style={{ padding: "0.75rem" }}>{usuario.fila}</td>
-                              <td style={{ padding: "0.75rem", fontSize: "12px" }}>{usuario.email}</td>
-                              <td style={{ padding: "0.75rem", fontFamily: "monospace", fontSize: "13px", fontWeight: "600", color: "#059669" }}>
-                                {usuario.password}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                {/* Resumen de la importación */}
+                {estadisticas && (
+                  <div style={{ 
+                    display: "grid", 
+                    gridTemplateColumns: "repeat(3, 1fr)", 
+                    gap: "1rem", 
+                    marginBottom: "1.5rem" 
+                  }}>
+                    <div style={{ 
+                      backgroundColor: "#dbeafe", 
+                      padding: "1rem", 
+                      borderRadius: "0.5rem", 
+                      textAlign: "center" 
+                    }}>
+                      <div style={{ fontSize: "24px", fontWeight: "bold", color: "#1e40af" }}>
+                        {estadisticas.total}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#1e40af", marginTop: "0.25rem" }}>
+                        Total Procesados
+                      </div>
                     </div>
-                    <p style={{ fontSize: "12px", color: "#dc2626", marginTop: "0.75rem", fontWeight: "500" }}>
-                      ⚠️ Importante: Copie estas credenciales ahora. No se mostrarán nuevamente.
-                    </p>
+                    <div style={{ 
+                      backgroundColor: "#d1fae5", 
+                      padding: "1rem", 
+                      borderRadius: "0.5rem", 
+                      textAlign: "center" 
+                    }}>
+                      <div style={{ fontSize: "24px", fontWeight: "bold", color: "#059669" }}>
+                        {usuariosCreados.length}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#059669", marginTop: "0.25rem" }}>
+                        Usuarios Creados
+                      </div>
+                    </div>
+                    <div style={{ 
+                      backgroundColor: estadisticas.errores > 0 ? "#fee2e2" : "#f3f4f6", 
+                      padding: "1rem", 
+                      borderRadius: "0.5rem", 
+                      textAlign: "center" 
+                    }}>
+                      <div style={{ 
+                        fontSize: "24px", 
+                        fontWeight: "bold", 
+                        color: estadisticas.errores > 0 ? "#dc2626" : "#6b7280" 
+                      }}>
+                        {estadisticas.errores}
+                      </div>
+                      <div style={{ 
+                        fontSize: "12px", 
+                        color: estadisticas.errores > 0 ? "#dc2626" : "#6b7280", 
+                        marginTop: "0.25rem" 
+                      }}>
+                        Con Errores
+                      </div>
+                    </div>
                   </div>
                 )}
 
-                <div style={{ textAlign: "center" }}>
+                {/* Tabla detallada de usuarios creados */}
+                {usuariosCreados.length > 0 && (
+                  <div style={{ marginBottom: "2rem" }}>
+                    <div style={{ 
+                      display: "flex", 
+                      justifyContent: "space-between", 
+                      alignItems: "center",
+                      marginBottom: "1rem" 
+                    }}>
+                      <h4 style={{ 
+                        fontSize: "16px", 
+                        fontWeight: "600", 
+                        color: "#374151", 
+                        margin: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem"
+                      }}>
+                        <Users size={20} style={{ color: "#10b981" }} />
+                        Usuarios Creados Exitosamente
+                      </h4>
+                      <div style={{ 
+                        fontSize: "12px", 
+                        color: "#059669",
+                        backgroundColor: "#d1fae5",
+                        padding: "0.25rem 0.75rem",
+                        borderRadius: "9999px",
+                        fontWeight: "600"
+                      }}>
+                        {usuariosCreados.length} usuarios
+                      </div>
+                    </div>
+                    
+                    <div style={{ 
+                      maxHeight: "350px", 
+                      overflowY: "auto", 
+                      border: "2px solid #10b981", 
+                      borderRadius: "0.75rem", 
+                      backgroundColor: "white",
+                      boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)"
+                    }}>
+                      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+                        <thead style={{ 
+                          backgroundColor: "#059669", 
+                          color: "white", 
+                          position: "sticky", 
+                          top: 0,
+                          zIndex: 10
+                        }}>
+                          <tr>
+                            <th style={{ padding: "1rem 0.75rem", textAlign: "left", fontWeight: "600" }}>#</th>
+                            <th style={{ padding: "1rem 0.75rem", textAlign: "left", fontWeight: "600" }}>Usuario</th>
+                            <th style={{ padding: "1rem 0.75rem", textAlign: "left", fontWeight: "600" }}>Email</th>
+                            <th style={{ padding: "1rem 0.75rem", textAlign: "left", fontWeight: "600" }}>Contraseña</th>
+                            <th style={{ padding: "1rem 0.75rem", textAlign: "center", fontWeight: "600" }}>Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {usuariosCreados.map((usuario, index) => {
+                            // Buscar datos adicionales del resultado de validación
+                            const datosCompletos = validacionResultados.find(r => r.fila === usuario.fila);
+                            
+                            return (
+                              <tr 
+                                key={usuario.fila} 
+                                style={{ 
+                                  borderBottom: "1px solid #e5e7eb",
+                                  backgroundColor: index % 2 === 0 ? "#f9fafb" : "white",
+                                  transition: "background-color 0.2s"
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0fdf4"}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = index % 2 === 0 ? "#f9fafb" : "white"}
+                              >
+                                <td style={{ padding: "0.75rem", fontWeight: "600", color: "#6b7280" }}>
+                                  {usuario.fila}
+                                </td>
+                                <td style={{ padding: "0.75rem" }}>
+                                  <div style={{ display: "flex", flexDirection: "column", gap: "0.125rem" }}>
+                                    <div style={{ fontWeight: "600", color: "#111827" }}>
+                                      {datosCompletos?.datos.nombre} {datosCompletos?.datos.apellido_paterno}
+                                    </div>
+                                    {datosCompletos?.datos.ci && (
+                                      <div style={{ fontSize: "11px", color: "#6b7280" }}>
+                                        CI: {datosCompletos.datos.ci}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                                <td style={{ padding: "0.75rem" }}>
+                                  <div style={{ 
+                                    display: "flex", 
+                                    alignItems: "center", 
+                                    gap: "0.5rem",
+                                    color: "#374151"
+                                  }}>
+                                    <Mail size={14} style={{ color: "#6b7280" }} />
+                                    <span style={{ fontSize: "12px" }}>{usuario.email}</span>
+                                  </div>
+                                </td>
+                                <td style={{ padding: "0.75rem" }}>
+                                  <div style={{ 
+                                    fontFamily: "monospace", 
+                                    fontSize: "13px", 
+                                    fontWeight: "700", 
+                                    color: "#059669",
+                                    backgroundColor: "#d1fae5",
+                                    padding: "0.375rem 0.625rem",
+                                    borderRadius: "0.375rem",
+                                    display: "inline-block",
+                                    letterSpacing: "0.025em"
+                                  }}>
+                                    {usuario.password}
+                                  </div>
+                                </td>
+                                <td style={{ padding: "0.75rem", textAlign: "center" }}>
+                                  <div style={{ 
+                                    display: "inline-flex", 
+                                    alignItems: "center", 
+                                    gap: "0.375rem",
+                                    backgroundColor: "#d1fae5",
+                                    color: "#059669",
+                                    padding: "0.375rem 0.75rem",
+                                    borderRadius: "9999px",
+                                    fontSize: "11px",
+                                    fontWeight: "600"
+                                  }}>
+                                    <CheckCircle size={14} />
+                                    Creado
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    <div style={{ 
+                      backgroundColor: "#fef2f2", 
+                      border: "1px solid #fecaca",
+                      borderRadius: "0.5rem",
+                      padding: "1rem",
+                      marginTop: "1rem",
+                      display: "flex",
+                      alignItems: "start",
+                      gap: "0.75rem"
+                    }}>
+                      <div style={{ 
+                        color: "#dc2626",
+                        fontSize: "20px",
+                        flexShrink: 0
+                      }}>
+                        ⚠️
+                      </div>
+                      <div>
+                        <div style={{ 
+                          fontSize: "13px", 
+                          color: "#991b1b", 
+                          fontWeight: "600",
+                          marginBottom: "0.25rem"
+                        }}>
+                          Importante: Guarde estas credenciales
+                        </div>
+                        <div style={{ 
+                          fontSize: "12px", 
+                          color: "#dc2626",
+                          lineHeight: "1.5"
+                        }}>
+                          Las contraseñas generadas no se podrán recuperar. Asegúrese de copiarlas y enviarlas a los usuarios correspondientes antes de cerrar esta ventana.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Botones de acción */}
+                <div style={{ 
+                  display: "flex", 
+                  gap: "1rem", 
+                  justifyContent: "center",
+                  paddingTop: "0.5rem"
+                }}>
+                  <button
+                    onClick={() => {
+                      // Copiar todas las credenciales al portapapeles
+                      const credenciales = usuariosCreados.map(u => 
+                        `${u.email} | ${u.password}`
+                      ).join('\n');
+                      navigator.clipboard.writeText(credenciales);
+                      setSuccess('Credenciales copiadas al portapapeles');
+                      setTimeout(() => setSuccess(null), 3000);
+                    }}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
+                      padding: "0.75rem 1.5rem",
+                      backgroundColor: "#059669",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "0.5rem",
+                      cursor: "pointer",
+                      fontSize: "14px",
+                      fontWeight: "500",
+                      transition: "background-color 0.2s"
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#047857"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#059669"}
+                  >
+                    📋 Copiar Credenciales
+                  </button>
                   <button
                     onClick={handleCerrarModalImportacion}
                     style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.5rem",
                       padding: "0.75rem 2rem",
                       backgroundColor: "#3b82f6",
                       color: "white",
                       border: "none",
-                      borderRadius: "0.375rem",
+                      borderRadius: "0.5rem",
                       cursor: "pointer",
                       fontSize: "14px",
                       fontWeight: "500",
+                      transition: "background-color 0.2s"
                     }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#2563eb"}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = "#3b82f6"}
                   >
-                    Cerrar
+                    ✓ Cerrar y Finalizar
                   </button>
                 </div>
               </div>
