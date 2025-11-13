@@ -101,7 +101,53 @@ interface FormData {
 }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api";
-const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+// Días en minúsculas sin tildes (backend los normalizará)
+const DIAS_SEMANA = [
+  "lunes",
+  "martes", 
+  "miercoles",
+  "jueves",
+  "viernes",
+  "sabado"
+] as const;
+
+// Función para mostrar día con formato bonito
+const formatearDiaParaMostrar = (dia: string): string => {
+  const formatos: Record<string, string> = {
+    'lunes': 'Lunes',
+    'martes': 'Martes',
+    'miercoles': 'Miércoles',
+    'jueves': 'Jueves',
+    'viernes': 'Viernes',
+    'sabado': 'Sábado',
+  };
+  return formatos[dia.toLowerCase()] || dia;
+};
+
+// Función para normalizar día entrante a minúsculas sin tildes
+const normalizarDia = (dia: string): string => {
+  const normalizaciones: Record<string, string> = {
+    'Lunes': 'lunes',
+    'Martes': 'martes',
+    'Miércoles': 'miercoles',
+    'Miercoles': 'miercoles',
+    'miércoles': 'miercoles',
+    'Jueves': 'jueves',
+    'Viernes': 'viernes',
+    'Sábado': 'sabado',
+    'Sabado': 'sabado',
+    'sábado': 'sabado',
+    'lunes': 'lunes',
+    'martes': 'martes',
+    'miercoles': 'miercoles',
+    'jueves': 'jueves',
+    'viernes': 'viernes',
+    'sabado': 'sabado',
+  };
+  
+  return normalizaciones[dia] || dia.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+};
 
 export default function HorariosPage() {
   const [horarios, setHorarios] = useState<Horario[]>([]);
@@ -211,6 +257,8 @@ export default function HorariosPage() {
   }, []);
 
   const handleSaveHorario = async () => {
+    console.log("FormData actual:", formData);
+    
     const newErrors: Record<string, string> = {};
 
     if (!formData.id_grupo) newErrors.id_grupo = "El grupo es requerido";
@@ -219,6 +267,7 @@ export default function HorariosPage() {
     if (formData.dias_semana.length === 0) newErrors.dias_semana = "Debe seleccionar al menos un día";
 
     if (Object.keys(newErrors).length > 0) {
+      console.error("Errores de validación frontend:", newErrors);
       setFormErrors(newErrors);
       return;
     }
@@ -229,26 +278,42 @@ export default function HorariosPage() {
       const method = editingId ? "PUT" : "POST";
       const url = editingId ? `${API_URL}/horarios/${editingId}` : `${API_URL}/horarios`;
 
+      const payload = {
+        id_grupo: parseInt(formData.id_grupo),
+        id_aula: parseInt(formData.id_aula),
+        id_bloque: parseInt(formData.id_bloque),
+        dias_semana: formData.dias_semana.map(normalizarDia),
+        activo: formData.activo,
+        descripcion: formData.descripcion || "",
+      };
+
+      console.log("Enviando payload:", payload);
+      console.log("dias_semana específicamente:", payload.dias_semana);
+      console.log("Cada día:", payload.dias_semana.map((d, i) => `[${i}]: "${d}" (${d.length} chars, códigos: ${[...d].map(c => c.charCodeAt(0)).join(',')})`));
+
       const response = await fetch(url, {
         method,
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          id_grupo: parseInt(formData.id_grupo),
-          id_aula: parseInt(formData.id_aula),
-          id_bloque: parseInt(formData.id_bloque),
-          dias_semana: formData.dias_semana,
-          activo: formData.activo,
-          descripcion: formData.descripcion,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
+      console.log("Respuesta del servidor:", data);
 
       if (!response.ok) {
-        setError(data.message || "Error al guardar horario");
+        // Mostrar errores específicos de validación si existen
+        if (data.errors) {
+          const errorMessages = Object.entries(data.errors)
+            .map(([field, messages]) => `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`)
+            .join('\n');
+          setError(`Errores de validación:\n${errorMessages}`);
+          console.error("Errores de validación:", data.errors);
+        } else {
+          setError(data.message || "Error al guardar horario");
+        }
         return;
       }
 
@@ -259,6 +324,7 @@ export default function HorariosPage() {
 
       setTimeout(() => setSuccess(null), 3000);
     } catch (err) {
+      console.error("Error completo:", err);
       setError(err instanceof Error ? err.message : "Error al guardar horario");
     } finally {
       setLoading(false);
@@ -328,7 +394,7 @@ export default function HorariosPage() {
       id_grupo: horario.id_grupo.toString(),
       id_aula: horario.id_aula.toString(),
       id_bloque: horario.id_bloque?.toString() || "",
-      dias_semana: horario.dias_semana || [],
+      dias_semana: (horario.dias_semana || []).map(normalizarDia), // Normalizar días al cargar
       activo: horario.activo,
       descripcion: horario.descripcion || "",
     });
@@ -625,6 +691,10 @@ export default function HorariosPage() {
                       </div>
                     </div>
 
+                    <div style={{ fontSize: "0.95rem", fontWeight: "700", color: "#1f2937", marginBottom: "0.5rem" }}>
+                      {horario.grupo?.materia?.nombre || "N/A"}
+                    </div>
+
                     <div
                       style={{
                         backgroundColor: "#e0e7ff",
@@ -749,17 +819,14 @@ export default function HorariosPage() {
                 <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151" }}>
                   Día
                 </th>
-                <th style={{ padding: "1rem", textAlign: "center", fontWeight: "600", color: "#374151" }}>
-                  Bloque
+                <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151" }}>
+                  Materia
                 </th>
                 <th style={{ padding: "1rem", textAlign: "center", fontWeight: "600", color: "#374151" }}>
                   Horario
                 </th>
                 <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151" }}>
                   Grupo
-                </th>
-                <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151" }}>
-                  Materia
                 </th>
                 <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151" }}>
                   Aula
@@ -811,16 +878,8 @@ export default function HorariosPage() {
                       <span style={{ color: "#9ca3af" }}>N/A</span>
                     )}
                   </td>
-                  <td
-                    style={{
-                      padding: "1rem",
-                      textAlign: "center",
-                      color: "#6b7280",
-                      fontWeight: "500",
-                      fontSize: "0.875rem",
-                    }}
-                  >
-                    {horario.bloque?.nombre}
+                  <td style={{ padding: "1rem", color: "#1f2937", fontWeight: "500" }}>
+                    {horario.grupo?.materia?.nombre || "N/A"}
                   </td>
                   <td
                     style={{
@@ -835,9 +894,6 @@ export default function HorariosPage() {
                   </td>
                   <td style={{ padding: "1rem", color: "#1f2937", fontWeight: "500" }}>
                     {horario.grupo?.codigo || `Grupo ${horario.id_grupo}`}
-                  </td>
-                  <td style={{ padding: "1rem", color: "#6b7280" }}>
-                    {horario.grupo?.materia?.nombre || "N/A"}
                   </td>
                   <td style={{ padding: "1rem", color: "#6b7280" }}>
                     {horario.aula?.numero_aula || horario.aula?.codigo}
@@ -969,56 +1025,30 @@ export default function HorariosPage() {
           </h1>
         </div>
         {canEdit && (
-          <div style={{ display: "flex", gap: "0.75rem" }}>
-            <button
-              onClick={() => {
-                resetFormBloque();
-                setShowModalBloques(true);
-              }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                backgroundColor: "#10b981",
-                color: "white",
-                border: "none",
-                borderRadius: "0.5rem",
-                padding: "0.75rem 1rem",
-                fontWeight: "600",
-                cursor: "pointer",
-                transition: "background-color 0.2s ease",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#059669")}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#10b981")}
-            >
-              <Clock size={20} />
-              Gestionar Bloques
-            </button>
-            <button
-              onClick={() => {
-                resetForm();
-                setShowModal(true);
-              }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                backgroundColor: "#3b82f6",
-                color: "white",
-                border: "none",
-                borderRadius: "0.5rem",
-                padding: "0.75rem 1rem",
-                fontWeight: "600",
-                cursor: "pointer",
-                transition: "background-color 0.2s ease",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1e40af")}
-              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3b82f6")}
-            >
-              <Plus size={20} />
-              Nuevo Horario
-            </button>
-          </div>
+          <button
+            onClick={() => {
+              resetForm();
+              setShowModal(true);
+            }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              backgroundColor: "#3b82f6",
+              color: "white",
+              border: "none",
+              borderRadius: "0.5rem",
+              padding: "0.75rem 1rem",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "background-color 0.2s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#1e40af")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "#3b82f6")}
+          >
+            <Plus size={20} />
+            Nuevo Horario
+          </button>
         )}
       </div>
 
@@ -1294,7 +1324,7 @@ export default function HorariosPage() {
                         style={{ width: "1rem", height: "1rem", cursor: "pointer" }}
                       />
                       <span style={{ fontSize: "0.875rem", color: "#374151" }}>
-                        {dia.charAt(0).toUpperCase() + dia.slice(1)}
+                        {formatearDiaParaMostrar(dia)}
                       </span>
                     </label>
                   ))}

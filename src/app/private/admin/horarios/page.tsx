@@ -614,6 +614,10 @@ export default function HorariosPage() {
                       </div>
                     </div>
 
+                    <div style={{ fontSize: "0.95rem", fontWeight: "700", color: "#1f2937", marginBottom: "0.5rem" }}>
+                      {horario.grupo?.materia?.nombre || "N/A"}
+                    </div>
+
                     <div
                       style={{
                         backgroundColor: "#e0e7ff",
@@ -738,8 +742,8 @@ export default function HorariosPage() {
                 <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151" }}>
                   Día
                 </th>
-                <th style={{ padding: "1rem", textAlign: "center", fontWeight: "600", color: "#374151" }}>
-                  Bloque
+                <th style={{ padding: "1rem", textAlign: "left", fontWeight: "600", color: "#374151" }}>
+                  Materia
                 </th>
                 <th style={{ padding: "1rem", textAlign: "center", fontWeight: "600", color: "#374151" }}>
                   Horario
@@ -779,16 +783,8 @@ export default function HorariosPage() {
                       ? horario.dias_semana.map(d => d.substring(0, 3).toUpperCase()).join(', ')
                       : 'N/A'}
                   </td>
-                  <td
-                    style={{
-                      padding: "1rem",
-                      textAlign: "center",
-                      color: "#6b7280",
-                      fontWeight: "500",
-                      fontSize: "0.875rem",
-                    }}
-                  >
-                    {horario.bloque?.nombre}
+                  <td style={{ padding: "1rem", color: "#1f2937", fontWeight: "500" }}>
+                    {horario.grupo?.materia?.nombre || "N/A"}
                   </td>
                   <td
                     style={{
