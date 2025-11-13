@@ -91,7 +91,6 @@ interface PaginatedResponse {
 }
 
 interface FormData {
-  id_materia: string;
   id_grupo: string;
   id_aula: string;
   id_bloque: string;
@@ -106,7 +105,6 @@ const DIAS_SEMANA = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabad
 export default function HorariosPage() {
   const [horarios, setHorarios] = useState<Horario[]>([]);
   const [grupos, setGrupos] = useState<Grupo[]>([]);
-  const [gruposFiltrados, setGruposFiltrados] = useState<Grupo[]>([]);
   const [materias, setMaterias] = useState<Materia[]>([]);
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [bloques, setBloques] = useState<BloqueHorario[]>([]);
@@ -122,7 +120,6 @@ export default function HorariosPage() {
   const [deleteLoading, setDeleteLoading] = useState<number | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
-    id_materia: "",
     id_grupo: "",
     id_aula: "",
     id_bloque: "",
@@ -299,21 +296,11 @@ export default function HorariosPage() {
   const handleEditHorario = (horario: Horario) => {
     setEditingId(horario.id);
     
-    // Buscar la materia del grupo para pre-seleccionarla
+    // Buscar el grupo para mostrar el docente
     const grupoSeleccionado = grupos.find(g => g.id === horario.id_grupo);
-    const idMateria = grupoSeleccionado?.id_materia || "";
-    
-    // Filtrar grupos de esa materia y guardar el grupo seleccionado
-    if (idMateria) {
-      const gruposDeLaMateria = grupos.filter(g => g.id_materia === Number(idMateria));
-      setGruposFiltrados(gruposDeLaMateria);
-    }
-    
-    // Guardar el grupo completo para mostrar el docente
     setSelectedGrupo(grupoSeleccionado || null);
     
     setFormData({
-      id_materia: idMateria.toString(),
       id_grupo: horario.id_grupo.toString(),
       id_aula: horario.id_aula.toString(),
       id_bloque: horario.id_bloque?.toString() || "",
@@ -322,18 +309,6 @@ export default function HorariosPage() {
       descripcion: horario.descripcion || "",
     });
     setShowModal(true);
-  };
-
-  const handleMateriaChange = (idMateria: string) => {
-    setFormData({ ...formData, id_materia: idMateria, id_grupo: "" });
-    setSelectedGrupo(null);
-    
-    if (idMateria) {
-      const gruposDeLaMateria = grupos.filter(g => g.id_materia === Number(idMateria));
-      setGruposFiltrados(gruposDeLaMateria);
-    } else {
-      setGruposFiltrados([]);
-    }
   };
 
   const handleGrupoChange = (idGrupo: string) => {
@@ -349,7 +324,6 @@ export default function HorariosPage() {
 
   const resetForm = () => {
     setFormData({
-      id_materia: "",
       id_grupo: "",
       id_aula: "",
       id_bloque: "",
@@ -358,7 +332,6 @@ export default function HorariosPage() {
       descripcion: "",
     });
     setSelectedGrupo(null);
-    setGruposFiltrados([]);
     setEditingId(null);
     setFormErrors({});
   };
@@ -630,7 +603,7 @@ export default function HorariosPage() {
                         display: "inline-block",
                       }}
                     >
-                      {horario.grupo?.codigo || `Grupo ${horario.id_grupo}`}
+                      {horario.grupo?.paralelo || horario.grupo?.codigo || `Grupo ${horario.id_grupo}`}
                     </div>
 
                     <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.25rem" }}>
@@ -798,7 +771,7 @@ export default function HorariosPage() {
                     {horario.bloque?.hora_inicio} - {horario.bloque?.hora_fin}
                   </td>
                   <td style={{ padding: "1rem", color: "#1f2937", fontWeight: "500" }}>
-                    {horario.grupo?.codigo || `Grupo ${horario.id_grupo}`}
+                    {horario.grupo?.paralelo || horario.grupo?.codigo || `Grupo ${horario.id_grupo}`}
                   </td>
                   <td style={{ padding: "1rem", color: "#6b7280" }}>
                     {horario.aula?.numero_aula || horario.aula?.codigo}
@@ -1009,7 +982,7 @@ export default function HorariosPage() {
           <option value="">Todos los grupos</option>
           {grupos.map((grupo) => (
             <option key={grupo.id} value={grupo.id}>
-              {grupo.codigo || `Grupo ${grupo.id}`}
+              {grupo.paralelo || grupo.codigo || `Grupo ${grupo.id}`}
             </option>
           ))}
         </select>
@@ -1079,36 +1052,10 @@ export default function HorariosPage() {
             </h2>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1rem" }}>
-              {/* Materia */}
-              <div>
+              {/* Grupo (con materia y paralelo) */}
+              <div style={{ gridColumn: "1 / -1" }}>
                 <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", color: "#374151", fontSize: "0.875rem" }}>
-                  Materia *
-                </label>
-                <select
-                  value={formData.id_materia}
-                  onChange={(e) => handleMateriaChange(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "0.75rem",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "0.5rem",
-                    fontSize: "0.875rem",
-                    boxSizing: "border-box",
-                  }}
-                >
-                  <option value="">Seleccionar materia</option>
-                  {materias.map((materia) => (
-                    <option key={materia.id} value={materia.id}>
-                      {materia.nombre}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Grupo */}
-              <div>
-                <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "600", color: "#374151", fontSize: "0.875rem" }}>
-                  Grupo (Paralelo) *
+                  Grupo (Materia + Paralelo) *
                 </label>
                 <select
                   value={formData.id_grupo}
@@ -1116,7 +1063,7 @@ export default function HorariosPage() {
                     handleGrupoChange(e.target.value);
                     if (formErrors.id_grupo) setFormErrors({ ...formErrors, id_grupo: "" });
                   }}
-                  disabled={!formData.id_materia}
+                  disabled={editingId ? true : false}
                   style={{
                     width: "100%",
                     padding: "0.75rem",
@@ -1124,18 +1071,19 @@ export default function HorariosPage() {
                     borderRadius: "0.5rem",
                     fontSize: "0.875rem",
                     boxSizing: "border-box",
-                    backgroundColor: !formData.id_materia ? "#f3f4f6" : "white",
-                    cursor: !formData.id_materia ? "not-allowed" : "pointer",
+                    backgroundColor: editingId ? "#f3f4f6" : "white",
+                    cursor: editingId ? "not-allowed" : "pointer",
                   }}
                 >
                   <option value="">Seleccionar grupo</option>
-                  {gruposFiltrados.map((grupo) => (
+                  {grupos.map((grupo) => (
                     <option key={grupo.id} value={grupo.id}>
-                      {grupo.paralelo}
+                      {grupo.materia?.codigo || 'SIN-COD'} - {grupo.materia?.nombre || 'Sin nombre'} ({grupo.paralelo || 'N/A'})
                     </option>
                   ))}
                 </select>
                 {formErrors.id_grupo && <p style={{ color: "#ef4444", fontSize: "0.75rem", margin: "0.25rem 0 0 0" }}>{formErrors.id_grupo}</p>}
+                {editingId && <p style={{ color: "#6b7280", fontSize: "0.75rem", margin: "0.25rem 0 0 0", fontStyle: "italic" }}>No se puede cambiar el grupo al editar un horario</p>}
               </div>
 
               {/* Aula */}
