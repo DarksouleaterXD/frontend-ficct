@@ -385,7 +385,7 @@ export default function DocentesPage() {
                       <td style={{ padding: "1rem", color: "#1f2937", fontSize: "14px" }}>{docente.ci}</td>
                       <td style={{ padding: "1rem", color: "#1f2937", fontSize: "14px" }}>
                         {docente.persona 
-                          ? `${docente.persona.nombre} ${docente.persona.apellido_paterno} ${docente.persona.apellido_materno || ''}`.trim()
+                          ? `${docente.persona.nombre || ''} ${docente.persona.apellido_paterno || ''} ${docente.persona.apellido_materno && docente.persona.apellido_materno !== 'null' ? docente.persona.apellido_materno : ''}`.trim()
                           : docente.nombre
                         }
                       </td>

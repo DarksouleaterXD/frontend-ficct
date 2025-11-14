@@ -56,38 +56,35 @@ export default function PeriodosPage() {
     vigente: false,
   });
 
-  const fetchPeriodos = useCallback(
-    async (page = 1, search = "", estado = "") => {
-      setLoading(true);
-      setError(null);
-      try {
-        const token = localStorage.getItem("token");
-        const url = new URL(`${API_URL}/periodos`);
-        url.searchParams.append("page", page.toString());
-        if (search) url.searchParams.append("search", search);
-        if (estado) url.searchParams.append("activo", estado);
+  const fetchPeriodos = async (page = 1, search = "", estado = "") => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("token");
+      const url = new URL(`${API_URL}/periodos`);
+      url.searchParams.append("page", page.toString());
+      if (search) url.searchParams.append("search", search);
+      if (estado) url.searchParams.append("activo", estado);
 
-        const response = await fetch(url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        });
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-        if (!response.ok) throw new Error("Error al cargar periodos");
+      if (!response.ok) throw new Error("Error al cargar periodos");
 
-        const data: PaginatedResponse = await response.json();
-        setPeriodos(data.data || []);
-        setCurrentPage(data.pagination.current_page);
-        setTotalPages(data.pagination.total_pages);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Error desconocido");
-      } finally {
-        setLoading(false);
-      }
-    },
-    []
-  );
+      const data: PaginatedResponse = await response.json();
+      setPeriodos(data.data || []);
+      setCurrentPage(data.pagination.current_page);
+      setTotalPages(data.pagination.total_pages);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error desconocido");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSavePeriodo = async () => {
     if (!formData.nombre || !formData.fecha_inicio || !formData.fecha_fin) {
@@ -223,12 +220,14 @@ export default function PeriodosPage() {
 
   useEffect(() => {
     fetchPeriodos(currentPage, searchTerm, filterEstado);
-  }, [currentPage, fetchPeriodos, searchTerm, filterEstado]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, searchTerm, filterEstado]);
 
   const canEdit = canAccess(["admin"]);
   const canView = canAccess(["admin", "coordinador", "autoridad"]);
 
   const getDiasRestantes = (fecha_fin: string) => {
+    if (typeof window === 'undefined') return 0;
     const today = new Date();
     const end = new Date(fecha_fin);
     const diff = end.getTime() - today.getTime();
@@ -237,6 +236,7 @@ export default function PeriodosPage() {
   };
 
   const formatFecha = (fecha: string) => {
+    if (typeof window === 'undefined') return '';
     return new Date(fecha).toLocaleDateString("es-ES", {
       year: "numeric",
       month: "long",
@@ -456,11 +456,11 @@ export default function PeriodosPage() {
                 <tbody>
                   {periodos.map((periodo) => {
                     const diasRestantes = getDiasRestantes(periodo.fecha_fin);
-                    const diasTotales = Math.ceil(
+                    const diasTotales = typeof window !== 'undefined' ? Math.ceil(
                       (new Date(periodo.fecha_fin).getTime() -
                         new Date(periodo.fecha_inicio).getTime()) /
                         (1000 * 3600 * 24)
-                    );
+                    ) : 0;
                     return (
                       <tr
                         key={periodo.id}

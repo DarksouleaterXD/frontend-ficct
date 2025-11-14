@@ -74,9 +74,12 @@ export default function AsistenciasPage() {
   const [evidencia, setEvidencia] = useState<File | null>(null);
   const [enviando, setEnviando] = useState(false);
 
+  // Estado para el día actual (evita hydration mismatch)
+  const [diaHoy, setDiaHoy] = useState("");
+
   // Días de la semana
   const diasSemana = [
-    { id: "hoy", label: "Hoy", dia: new Date().toLocaleDateString('es-ES', { weekday: 'long' }) },
+    { id: "hoy", label: "Hoy", dia: diaHoy },
     { id: "lunes", label: "Lunes" },
     { id: "martes", label: "Martes" },
     { id: "miercoles", label: "Miércoles" },
@@ -100,22 +103,51 @@ export default function AsistenciasPage() {
     };
   }, []);
 
+  // Inicializar fecha y hora solo en el cliente
+  useEffect(() => {
+    const ahora = new Date();
+    setDiaHoy(ahora.toLocaleDateString('es-ES', { weekday: 'long' }));
+    actualizarFechaHora();
+  }, []);
+
   // Cargar clases al montar y cuando cambie el día
   useEffect(() => {
-    cargarClasesHoy();
-    actualizarFechaHora();
+    if (fechaActual) { // Solo cargar cuando ya tengamos la fecha inicializada
+      cargarClasesHoy();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [diaSeleccionado, fechaActual]);
 
-    // Actualizar hora cada minuto
+  // Actualizar hora cada minuto
+  useEffect(() => {
     const interval = setInterval(actualizarFechaHora, 60000);
     return () => clearInterval(interval);
-  }, [diaSeleccionado]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ============================================
   // FUNCIONES
   // ============================================
 
-  const actualizarFechaHora = () => {
+  // Función centralizada para obtener la hora actual (real o simulada)
+  const obtenerHoraActual = (): Date => {
     const ahora = new Date();
+    
+    // ===== MODO PRUEBA: Descomentar UNA línea para simular una hora específica =====
+    // ahora.setHours(7, 0, 0); // Simular las 07:00
+    // ahora.setHours(6, 45, 0); // Simular las 06:45 (dentro de ventana para clase de 07:00)
+    // ahora.setHours(11, 15, 0); // Simular las 11:15 (dentro de ventana para clase de 11:30)
+    // ahora.setHours(7, 25, 0); // Simular las 07:25 (fuera de ventana para clase de 07:00)
+    // ahora.setHours(11, 5, 0); // Simular las 11:05 (dentro de ventana para clase de 11:30)
+    // ahora.setHours(11, 55, 0); // Simular las 11:55 (fuera de ventana para clase de 11:30)
+    // ================================================================================
+    
+    return ahora;
+  };
+
+  const actualizarFechaHora = () => {
+    const ahora = obtenerHoraActual();
+    
     setFechaActual(
       ahora.toLocaleDateString("es-ES", {
         weekday: "long",
@@ -124,7 +156,7 @@ export default function AsistenciasPage() {
         day: "numeric",
       })
     );
-    setHoraActual(ahora.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }));
+    setHoraActual(ahora.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", hour12: false }));
   };
 
   const cargarClasesHoy = async () => {
@@ -134,8 +166,8 @@ export default function AsistenciasPage() {
     try {
       const token = localStorage.getItem("token");
       
-      // Usar el endpoint de mi-horario que ya devuelve todas las clases de la semana
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mi-horario`, {
+      // Usar el endpoint mis-clases-hoy que devuelve sesiones reales con IDs correctos
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/mis-clases-hoy`, {
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/json",
@@ -144,59 +176,14 @@ export default function AsistenciasPage() {
 
       const data = await response.json();
 
+      console.log("📥 Respuesta de /mis-clases-hoy:", data);
+
       if (data.success) {
-        // Obtener el día de la semana según la selección
-        let diaFiltro = "";
-        const ahora = new Date();
-        const diasMap: { [key: string]: string } = {
-          "lunes": "Lunes",
-          "martes": "Martes",
-          "miercoles": "Miércoles",
-          "jueves": "Jueves",
-          "viernes": "Viernes",
-          "sabado": "Sábado",
-          "hoy": ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"][ahora.getDay()]
-        };
-        
-        diaFiltro = diasMap[diaSeleccionado] || diasMap["hoy"];
-
-        // Convertir la grilla de horarios a formato de sesiones
-        const sesionesDelDia: Sesion[] = [];
-        
-        if (data.data && Array.isArray(data.data)) {
-          data.data.forEach((fila: any) => {
-            // Verificar si hay clase en el día seleccionado
-            const claseDelDia = fila[diaFiltro];
-            
-            if (claseDelDia && claseDelDia.materia) {
-              // Usar las horas del bloque (hora_inicio y hora_fin están en la raíz de fila)
-              const horaInicio = fila.hora_inicio || claseDelDia.hora_inicio;
-              const horaFin = fila.hora_fin || claseDelDia.hora_fin;
-              
-              // Crear sesión a partir de los datos del horario
-              const sesion: Sesion = {
-                id: claseDelDia.id,
-                materia: claseDelDia.materia,
-                grupo: claseDelDia.paralelo,
-                aula: claseDelDia.aula || "N/A",
-                hora_inicio: horaInicio,
-                hora_fin: horaFin,
-                estado_sesion: "programada",
-                dentro_ventana: verificarVentanaHoraria(horaInicio, horaFin),
-                ventana_inicio: calcularVentanaInicio(horaInicio),
-                ventana_fin: calcularVentanaFin(horaInicio),
-                asistencia_registrada: false,
-                asistencia: null,
-              };
-              
-              sesionesDelDia.push(sesion);
-            }
-          });
-        }
-
-        setSesiones(sesionesDelDia);
+        // El backend ya devuelve las sesiones del día con toda la información
+        console.log("📋 Sesiones recibidas:", data.data);
+        setSesiones(data.data || []);
       } else {
-        setError("Error al cargar las clases");
+        setError(data.message || "Error al cargar las clases");
       }
     } catch (err) {
       setError("Error de conexión. Por favor, intente nuevamente.");
@@ -208,7 +195,7 @@ export default function AsistenciasPage() {
 
   // Función para verificar si estamos dentro de la ventana horaria
   const verificarVentanaHoraria = (horaInicio: string, horaFin: string): boolean => {
-    const ahora = new Date();
+    const ahora = obtenerHoraActual();
     const horaActual = ahora.getHours() * 60 + ahora.getMinutes();
     
     // Parsear hora de inicio (formato puede ser HH:MM o timestamp)
@@ -224,9 +211,9 @@ export default function AsistenciasPage() {
       inicioMinutos = h * 60 + m;
     }
     
-    // Ventana: 30 minutos antes del inicio hasta 1 hora después del inicio
+    // Ventana: 30 minutos antes del inicio hasta 20 minutos después del inicio
     const ventanaInicio = inicioMinutos - 30;
-    const ventanaFin = inicioMinutos + 60;
+    const ventanaFin = inicioMinutos + 20;
     
     return horaActual >= ventanaInicio && horaActual <= ventanaFin;
   };
@@ -261,8 +248,8 @@ export default function AsistenciasPage() {
       inicioMinutos = h * 60 + m;
     }
     
-    // 1 hora después del inicio
-    const ventanaFin = inicioMinutos + 60;
+    // 20 minutos después del inicio
+    const ventanaFin = inicioMinutos + 20;
     const horas = Math.floor(ventanaFin / 60);
     const minutos = ventanaFin % 60;
     
@@ -315,6 +302,10 @@ export default function AsistenciasPage() {
 
     try {
       const token = localStorage.getItem("token");
+      
+      console.log("📤 Enviando asistencia para sesión:", sesionSeleccionada);
+      console.log("📤 sesion_id a enviar:", sesionSeleccionada.id);
+      
       const formData = new FormData();
       formData.append("sesion_id", sesionSeleccionada.id.toString());
       formData.append("estado", estadoAsistencia);
@@ -332,12 +323,18 @@ export default function AsistenciasPage() {
 
       const data = await response.json();
 
+      console.log("📥 Respuesta de marcar asistencia:", data);
+
       if (response.ok && data.success) {
         alert(`✅ Asistencia registrada exitosamente\n\nEstado: ${data.data.estado}\nHora: ${data.data.hora_marcado}`);
         cerrarModal();
         cargarClasesHoy(); // Recargar lista
       } else {
-        alert(`❌ Error: ${data.message || "No se pudo registrar la asistencia"}`);
+        console.error("❌ Error al marcar asistencia:", data);
+        if (data.errors) {
+          console.error("Errores de validación:", data.errors);
+        }
+        alert(`❌ Error: ${data.message || "No se pudo registrar la asistencia"}\n\n${data.errors ? JSON.stringify(data.errors, null, 2) : ''}`);
       }
     } catch (err) {
       alert("❌ Error de conexión. Por favor, intente nuevamente.");

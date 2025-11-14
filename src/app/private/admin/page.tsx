@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Clock, Building2, Book, Users2 } from "lucide-react";
 
 interface UserData {
@@ -8,6 +8,8 @@ interface UserData {
   email?: string;
   rol?: string;
 }
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function DashboardPage() {
   const [user] = useState<UserData | null>(() => {
@@ -30,6 +32,64 @@ export default function DashboardPage() {
     }
     return null;
   });
+
+  const [stats, setStats] = useState({
+    horarios: 0,
+    aulas: 0,
+    materias: 0,
+    docentes: 0,
+  });
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  const fetchStats = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    try {
+      const [horariosRes, aulasRes, materiasRes, docentesRes] = await Promise.all([
+        fetch(`${API_URL}/horarios?per_page=1`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/aulas?per_page=1`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/materias?per_page=1`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/docentes?per_page=1`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ]);
+
+      const [horariosData, aulasData, materiasData, docentesData] = await Promise.all([
+        horariosRes.ok ? horariosRes.json() : null,
+        aulasRes.ok ? aulasRes.json() : null,
+        materiasRes.ok ? materiasRes.json() : null,
+        docentesRes.ok ? docentesRes.json() : null,
+      ]);
+
+      console.log("Horarios:", horariosData);
+      console.log("Aulas:", aulasData);
+      console.log("Materias:", materiasData);
+      console.log("Docentes:", docentesData);
+
+      setStats({
+        horarios: horariosData?.pagination?.total || horariosData?.total || (horariosData?.data ? horariosData.data.length : 0),
+        aulas: aulasData?.pagination?.total || aulasData?.total || (aulasData?.data ? aulasData.data.length : 0),
+        materias: materiasData?.pagination?.total || materiasData?.total || (materiasData?.data ? materiasData.data.length : 0),
+        docentes: docentesData?.pagination?.total || docentesData?.total || (docentesData?.data ? docentesData.data.length : 0),
+      });
+    } catch (error) {
+      console.error("Error al cargar estadísticas:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
@@ -66,7 +126,7 @@ export default function DashboardPage() {
                 Horarios
               </p>
               <p style={{ fontSize: "24px", fontWeight: "bold", color: "#1f2937", marginTop: "0.5rem", margin: 0 }}>
-                0
+                {loading ? "..." : stats.horarios}
               </p>
             </div>
             <div style={{ color: "#3b82f6", opacity: 0.3 }}>
@@ -82,7 +142,7 @@ export default function DashboardPage() {
                 Aulas
               </p>
               <p style={{ fontSize: "24px", fontWeight: "bold", color: "#1f2937", marginTop: "0.5rem", margin: 0 }}>
-                0
+                {loading ? "..." : stats.aulas}
               </p>
             </div>
             <div style={{ color: "#3b82f6", opacity: 0.3 }}>
@@ -98,7 +158,7 @@ export default function DashboardPage() {
                 Materias
               </p>
               <p style={{ fontSize: "24px", fontWeight: "bold", color: "#1f2937", marginTop: "0.5rem", margin: 0 }}>
-                0
+                {loading ? "..." : stats.materias}
               </p>
             </div>
             <div style={{ color: "#3b82f6", opacity: 0.3 }}>
@@ -114,7 +174,7 @@ export default function DashboardPage() {
                 Docentes
               </p>
               <p style={{ fontSize: "24px", fontWeight: "bold", color: "#1f2937", marginTop: "0.5rem", margin: 0 }}>
-                0
+                {loading ? "..." : stats.docentes}
               </p>
             </div>
             <div style={{ color: "#3b82f6", opacity: 0.3 }}>

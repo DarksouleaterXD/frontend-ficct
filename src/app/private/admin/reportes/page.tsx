@@ -34,6 +34,7 @@ interface HorarioReporte {
   };
   grupo: {
     codigo: string;
+    paralelo: string;
     materia: {
       nombre: string;
     };
@@ -61,23 +62,50 @@ interface AulaDisponible {
   }>;
 }
 
+interface Aula {
+  id: number;
+  numero_aula: string;
+  capacidad: number;
+}
+
+interface BloqueHorario {
+  id: number;
+  nombre: string;
+  hora_inicio: string;
+  hora_fin: string;
+  numero_bloque: number;
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export default function ReportesPage() {
-  const [tipoReporte, setTipoReporte] = useState<"horarios" | "aulas">("horarios");
+  const [tipoReporte, setTipoReporte] = useState<"horarios" | "aulas" | "asistencias">("horarios");
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [carreras, setCarreras] = useState<Carrera[]>([]);
   const [docentes, setDocentes] = useState<Docente[]>([]);
+  const [aulasLista, setAulasLista] = useState<Aula[]>([]);
+  const [bloquesHorarios, setBloquesHorarios] = useState<BloqueHorario[]>([]);
   
   // Filtros
   const [selectedPeriodo, setSelectedPeriodo] = useState("");
   const [selectedCarrera, setSelectedCarrera] = useState("");
   const [selectedDocente, setSelectedDocente] = useState("");
   const [selectedDia, setSelectedDia] = useState("");
+  const [selectedAula, setSelectedAula] = useState("");
+  const [selectedBloque, setSelectedBloque] = useState("");
+  const [fechaDesde, setFechaDesde] = useState(() => {
+    const fecha = new Date();
+    fecha.setDate(1); // Primer día del mes
+    return fecha.toISOString().split('T')[0];
+  });
+  const [fechaHasta, setFechaHasta] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
   
   // Datos
   const [horarios, setHorarios] = useState<HorarioReporte[]>([]);
   const [aulas, setAulas] = useState<AulaDisponible[]>([]);
+  const [estadisticasAsistencias, setEstadisticasAsistencias] = useState<any[]>([]);
   
   // Estados
   const [loading, setLoading] = useState(false);
@@ -94,7 +122,7 @@ export default function ReportesPage() {
   const fetchCatalogos = async () => {
     const token = localStorage.getItem("token");
     try {
-      const [periodosRes, carrerasRes, docentesRes] = await Promise.all([
+      const [periodosRes, carrerasRes, docentesRes, aulasRes, bloquesRes] = await Promise.all([
         fetch(`${API_URL}/periodos?per_page=999`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -102,6 +130,12 @@ export default function ReportesPage() {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${API_URL}/docentes?per_page=999`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/aulas?per_page=999`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        fetch(`${API_URL}/bloques-horarios?per_page=999`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -122,6 +156,16 @@ export default function ReportesPage() {
         const data = await docentesRes.json();
         setDocentes(data.data || []);
       }
+
+      if (aulasRes.ok) {
+        const data = await aulasRes.json();
+        setAulasLista(data.data || []);
+      }
+
+      if (bloquesRes.ok) {
+        const data = await bloquesRes.json();
+        setBloquesHorarios(data.data || []);
+      }
     } catch (err) {
       console.error("Error cargando catálogos:", err);
     }
@@ -129,16 +173,28 @@ export default function ReportesPage() {
 
   // Previsualizar reporte
   const handlePrevisualizar = async () => {
-    if (!selectedPeriodo) {
+    // Validaciones
+    if (tipoReporte === "horarios" && !selectedPeriodo) {
       setError("Selecciona un periodo");
+      return;
+    }
+    
+    if (tipoReporte === "asistencias") {
+      if (!fechaDesde || !fechaHasta) {
+        setError("Selecciona rango de fechas");
+        return;
+      }
+    }
+
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setError("No estás autenticado. Por favor inicia sesión.");
       return;
     }
 
     setError("");
     setLoading(true);
     setPrevisualizando(true);
-
-    const token = localStorage.getItem("token");
 
     try {
       if (tipoReporte === "horarios") {
@@ -156,11 +212,17 @@ export default function ReportesPage() {
           const data = await res.json();
           setHorarios(data.data || []);
         } else {
-          setError("Error al cargar horarios");
+          const errorData = await res.json().catch(() => ({ message: "Error al cargar horarios" }));
+          setError(errorData.message || `Error ${res.status}: ${res.statusText}`);
+          if (res.status === 401) {
+            setError("Sesión expirada. Por favor inicia sesión nuevamente.");
+          }
         }
-      } else {
+      } else if (tipoReporte === "aulas") {
         const params = new URLSearchParams({
           ...(selectedDia && { dia: selectedDia }),
+          ...(selectedAula && { aula_id: selectedAula }),
+          ...(selectedBloque && { bloque_id: selectedBloque }),
         });
 
         const res = await fetch(`${API_URL}/reportes/aulas-disponibles?${params}`, {
@@ -171,12 +233,37 @@ export default function ReportesPage() {
           const data = await res.json();
           setAulas(data.data || []);
         } else {
-          setError("Error al cargar aulas");
+          const errorData = await res.json().catch(() => ({ message: "Error al cargar aulas disponibles" }));
+          setError(errorData.message || `Error ${res.status}: ${res.statusText}`);
+          if (res.status === 401) {
+            setError("Sesión expirada. Por favor inicia sesión nuevamente.");
+          }
+        }
+      } else if (tipoReporte === "asistencias") {
+        const params = new URLSearchParams({
+          fecha_desde: fechaDesde,
+          fecha_hasta: fechaHasta,
+          ...(selectedDocente && { docente_id: selectedDocente }),
+        });
+
+        const res = await fetch(`${API_URL}/reportes/asistencias/estadisticas-docente?${params}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          setEstadisticasAsistencias(data.data || []);
+        } else {
+          const errorData = await res.json().catch(() => ({ message: "Error al cargar estadísticas de asistencias" }));
+          setError(errorData.message || `Error ${res.status}: ${res.statusText}`);
+          if (res.status === 401) {
+            setError("Sesión expirada. Por favor inicia sesión nuevamente.");
+          }
         }
       }
     } catch (err) {
-      setError("Error de conexión");
-      console.error(err);
+      setError("Error de conexión con el servidor. Verifica que el backend esté corriendo.");
+      console.error("Error en handlePrevisualizar:", err);
     } finally {
       setLoading(false);
     }
@@ -193,16 +280,30 @@ export default function ReportesPage() {
     const token = localStorage.getItem("token");
 
     try {
-      const params = new URLSearchParams({
-        periodo_id: selectedPeriodo,
-        ...(selectedCarrera && { carrera_id: selectedCarrera }),
-        ...(selectedDocente && { docente_id: selectedDocente }),
-        ...(selectedDia && { dia: selectedDia }),
-      });
+      let endpoint = "";
 
-      const endpoint = tipoReporte === "horarios" 
-        ? `${API_URL}/reportes/horarios-semanales/pdf?${params}`
-        : `${API_URL}/reportes/aulas-disponibles/pdf?${params}`;
+      if (tipoReporte === "horarios") {
+        const params = new URLSearchParams({
+          periodo_id: selectedPeriodo,
+          ...(selectedCarrera && { carrera_id: selectedCarrera }),
+          ...(selectedDocente && { docente_id: selectedDocente }),
+        });
+        endpoint = `${API_URL}/reportes/horarios-semanales/pdf?${params}`;
+      } else if (tipoReporte === "aulas") {
+        const params = new URLSearchParams({
+          ...(selectedDia && { dia: selectedDia }),
+          ...(selectedAula && { aula_id: selectedAula }),
+          ...(selectedBloque && { bloque_id: selectedBloque }),
+        });
+        endpoint = `${API_URL}/reportes/aulas-disponibles/pdf?${params}`;
+      } else if (tipoReporte === "asistencias") {
+        const params = new URLSearchParams({
+          fecha_desde: fechaDesde,
+          fecha_hasta: fechaHasta,
+          ...(selectedDocente && { docente_id: selectedDocente }),
+        });
+        endpoint = `${API_URL}/reportes/asistencias/pdf?${params}`;
+      }
 
       const res = await fetch(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
@@ -238,16 +339,30 @@ export default function ReportesPage() {
     const token = localStorage.getItem("token");
 
     try {
-      const params = new URLSearchParams({
-        periodo_id: selectedPeriodo,
-        ...(selectedCarrera && { carrera_id: selectedCarrera }),
-        ...(selectedDocente && { docente_id: selectedDocente }),
-        ...(selectedDia && { dia: selectedDia }),
-      });
+      let endpoint = "";
 
-      const endpoint = tipoReporte === "horarios"
-        ? `${API_URL}/reportes/horarios-semanales/excel?${params}`
-        : `${API_URL}/reportes/aulas-disponibles/excel?${params}`;
+      if (tipoReporte === "horarios") {
+        const params = new URLSearchParams({
+          periodo_id: selectedPeriodo,
+          ...(selectedCarrera && { carrera_id: selectedCarrera }),
+          ...(selectedDocente && { docente_id: selectedDocente }),
+        });
+        endpoint = `${API_URL}/reportes/horarios-semanales/excel?${params}`;
+      } else if (tipoReporte === "aulas") {
+        const params = new URLSearchParams({
+          ...(selectedDia && { dia: selectedDia }),
+          ...(selectedAula && { aula_id: selectedAula }),
+          ...(selectedBloque && { bloque_id: selectedBloque }),
+        });
+        endpoint = `${API_URL}/reportes/aulas-disponibles/excel?${params}`;
+      } else if (tipoReporte === "asistencias") {
+        const params = new URLSearchParams({
+          fecha_desde: fechaDesde,
+          fecha_hasta: fechaHasta,
+          ...(selectedDocente && { docente_id: selectedDocente }),
+        });
+        endpoint = `${API_URL}/reportes/asistencias/excel?${params}`;
+      }
 
       const res = await fetch(endpoint, {
         headers: { Authorization: `Bearer ${token}` },
@@ -307,6 +422,9 @@ export default function ReportesPage() {
               setTipoReporte("horarios");
               setPrevisualizando(false);
               setHorarios([]);
+              setSelectedDia("");
+              setSelectedAula("");
+              setSelectedBloque("");
             }}
             style={{
               flex: 1,
@@ -337,6 +455,8 @@ export default function ReportesPage() {
               setTipoReporte("aulas");
               setPrevisualizando(false);
               setAulas([]);
+              setSelectedCarrera("");
+              setSelectedDocente("");
             }}
             style={{
               flex: 1,
@@ -358,6 +478,37 @@ export default function ReportesPage() {
               </div>
               <div style={{ fontSize: "0.875rem", color: "#6b7280" }}>
                 Disponibilidad por bloque horario
+              </div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => {
+              setTipoReporte("asistencias");
+              setPrevisualizando(false);
+              setHorarios([]);
+              setAulas([]);
+            }}
+            style={{
+              flex: 1,
+              padding: "1rem",
+              border: tipoReporte === "asistencias" ? "2px solid #8b5cf6" : "2px solid #e5e7eb",
+              borderRadius: "0.5rem",
+              backgroundColor: tipoReporte === "asistencias" ? "#f5f3ff" : "white",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.75rem",
+            }}
+          >
+            <Users size={24} color={tipoReporte === "asistencias" ? "#8b5cf6" : "#6b7280"} />
+            <div style={{ textAlign: "left" }}>
+              <div style={{ fontWeight: "600", color: tipoReporte === "asistencias" ? "#8b5cf6" : "#1f2937" }}>
+                Asistencias Docentes
+              </div>
+              <div style={{ fontSize: "0.875rem", color: "#6b7280" }}>
+                Estadísticas y reportes de asistencia
               </div>
             </div>
           </button>
@@ -490,6 +641,129 @@ export default function ReportesPage() {
               </select>
             </div>
           )}
+
+          {/* Aula - Solo para Aulas */}
+          {tipoReporte === "aulas" && (
+            <div>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", color: "#374151" }}>
+                Aula (Opcional)
+              </label>
+              <select
+                value={selectedAula}
+                onChange={(e) => setSelectedAula(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "0.5rem",
+                  fontSize: "1rem",
+                }}
+              >
+                <option value="">Todas las aulas</option>
+                {aulasLista.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    Aula {a.numero_aula} ({a.capacidad} estudiantes)
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Bloque Horario - Solo para Aulas */}
+          {tipoReporte === "aulas" && (
+            <div>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", color: "#374151" }}>
+                Bloque Horario (Opcional)
+              </label>
+              <select
+                value={selectedBloque}
+                onChange={(e) => setSelectedBloque(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "0.5rem",
+                  fontSize: "1rem",
+                }}
+              >
+                <option value="">Todos los bloques</option>
+                {bloquesHorarios.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.nombre} ({b.hora_inicio} - {b.hora_fin})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Fecha Desde - Solo para Asistencias */}
+          {tipoReporte === "asistencias" && (
+            <div>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", color: "#374151" }}>
+                Fecha Desde *
+              </label>
+              <input
+                type="date"
+                value={fechaDesde}
+                onChange={(e) => setFechaDesde(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "0.5rem",
+                  fontSize: "1rem",
+                }}
+              />
+            </div>
+          )}
+
+          {/* Fecha Hasta - Solo para Asistencias */}
+          {tipoReporte === "asistencias" && (
+            <div>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", color: "#374151" }}>
+                Fecha Hasta *
+              </label>
+              <input
+                type="date"
+                value={fechaHasta}
+                onChange={(e) => setFechaHasta(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "0.5rem",
+                  fontSize: "1rem",
+                }}
+              />
+            </div>
+          )}
+
+          {/* Docente - Para Asistencias también */}
+          {tipoReporte === "asistencias" && (
+            <div>
+              <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", color: "#374151" }}>
+                Docente (Opcional)
+              </label>
+              <select
+                value={selectedDocente}
+                onChange={(e) => setSelectedDocente(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "0.75rem",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "0.5rem",
+                  fontSize: "1rem",
+                }}
+              >
+                <option value="">Todos los docentes</option>
+                {docentes.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.persona.nombre} {d.persona.apellido_paterno}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Botones de Acción */}
@@ -516,49 +790,26 @@ export default function ReportesPage() {
           </button>
 
           {previsualizando && (
-            <>
-              <button
-                onClick={handleExportarPDF}
-                disabled={loading}
-                style={{
-                  backgroundColor: "#ef4444",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "0.5rem",
-                  padding: "0.75rem 1.5rem",
-                  fontWeight: "600",
-                  cursor: loading ? "not-allowed" : "pointer",
-                  opacity: loading ? 0.6 : 1,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                }}
-              >
-                <Download size={20} />
-                Exportar PDF
-              </button>
-
-              <button
-                onClick={handleExportarExcel}
-                disabled={loading}
-                style={{
-                  backgroundColor: "#10b981",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "0.5rem",
-                  padding: "0.75rem 1.5rem",
-                  fontWeight: "600",
-                  cursor: loading ? "not-allowed" : "pointer",
-                  opacity: loading ? 0.6 : 1,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "0.5rem",
-                }}
-              >
-                <Download size={20} />
-                Exportar Excel
-              </button>
-            </>
+            <button
+              onClick={handleExportarPDF}
+              disabled={loading}
+              style={{
+                backgroundColor: "#ef4444",
+                color: "white",
+                border: "none",
+                borderRadius: "0.5rem",
+                padding: "0.75rem 1.5rem",
+                fontWeight: "600",
+                cursor: loading ? "not-allowed" : "pointer",
+                opacity: loading ? 0.6 : 1,
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+              }}
+            >
+              <Download size={20} />
+              Exportar PDF
+            </button>
           )}
         </div>
       </div>
@@ -627,7 +878,7 @@ export default function ReportesPage() {
                       <td style={{ padding: "0.75rem", fontFamily: "monospace" }}>
                         {h.bloque.hora_inicio} - {h.bloque.hora_fin}
                       </td>
-                      <td style={{ padding: "0.75rem" }}>{h.grupo.codigo}</td>
+                      <td style={{ padding: "0.75rem" }}>{h.grupo.codigo}-{h.grupo.paralelo}</td>
                       <td style={{ padding: "0.75rem" }}>{h.aula.numero_aula}</td>
                       <td style={{ padding: "0.75rem" }}>
                         {h.docente.persona.nombre} {h.docente.persona.apellido_paterno}
@@ -658,57 +909,234 @@ export default function ReportesPage() {
 
           {aulas.length === 0 ? (
             <div style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>
-              No se encontraron aulas
+              No se encontraron aulas con los filtros seleccionados
             </div>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "1rem" }}>
-              {aulas.map((aula) => (
-                <div
-                  key={aula.id}
-                  style={{
-                    border: "1px solid #e5e7eb",
-                    borderRadius: "0.5rem",
-                    padding: "1rem",
-                  }}
-                >
-                  <div style={{ marginBottom: "0.5rem" }}>
-                    <div style={{ fontWeight: "600", fontSize: "1.125rem", color: "#1f2937" }}>
-                      Aula {aula.numero_aula}
-                    </div>
-                    <div style={{ fontSize: "0.875rem", color: "#6b7280" }}>
-                      Capacidad: {aula.capacidad} estudiantes
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                    {aula.bloques_disponibles.map((bloque, idx) => (
-                      <div
-                        key={idx}
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#f9fafb", borderBottom: "2px solid #e5e7eb" }}>
+                    <th style={{ padding: "0.75rem", textAlign: "left", fontWeight: "600" }}>Aula</th>
+                    <th style={{ padding: "0.75rem", textAlign: "left", fontWeight: "600" }}>Capacidad</th>
+                    <th style={{ padding: "0.75rem", textAlign: "left", fontWeight: "600" }}>Bloque Horario</th>
+                    <th style={{ padding: "0.75rem", textAlign: "left", fontWeight: "600" }}>Horario</th>
+                    <th style={{ padding: "0.75rem", textAlign: "center", fontWeight: "600" }}>Estado</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {aulas.map((aula) =>
+                    aula.bloques_disponibles.map((bloque, idx) => (
+                      <tr
+                        key={`${aula.id}-${idx}`}
                         style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "0.5rem",
-                          backgroundColor: bloque.disponible ? "#f0fdf4" : "#fee2e2",
-                          borderRadius: "0.25rem",
+                          borderBottom: "1px solid #e5e7eb",
+                          backgroundColor: bloque.disponible ? "#f0fdf4" : "#fef2f2",
                         }}
                       >
-                        <span style={{ fontSize: "0.875rem", fontWeight: "500" }}>
+                        {idx === 0 && (
+                          <>
+                            <td
+                              rowSpan={aula.bloques_disponibles.length}
+                              style={{
+                                padding: "0.75rem",
+                                fontWeight: "600",
+                                borderRight: "1px solid #e5e7eb",
+                              }}
+                            >
+                              Aula {aula.numero_aula}
+                            </td>
+                            <td
+                              rowSpan={aula.bloques_disponibles.length}
+                              style={{
+                                padding: "0.75rem",
+                                borderRight: "1px solid #e5e7eb",
+                              }}
+                            >
+                              {aula.capacidad} estudiantes
+                            </td>
+                          </>
+                        )}
+                        <td style={{ padding: "0.75rem", fontWeight: "500" }}>
+                          {bloque.bloque}
+                        </td>
+                        <td style={{ padding: "0.75rem", fontFamily: "monospace" }}>
                           {bloque.hora_inicio} - {bloque.hora_fin}
-                        </span>
+                        </td>
+                        <td style={{ padding: "0.75rem", textAlign: "center" }}>
+                          <span
+                            style={{
+                              display: "inline-block",
+                              padding: "0.25rem 0.75rem",
+                              borderRadius: "9999px",
+                              fontSize: "0.75rem",
+                              fontWeight: "600",
+                              backgroundColor: bloque.disponible ? "#dcfce7" : "#fee2e2",
+                              color: bloque.disponible ? "#166534" : "#991b1b",
+                            }}
+                          >
+                            {bloque.disponible ? "✓ Disponible" : "✗ Ocupada"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Previsualización - Asistencias */}
+      {previsualizando && tipoReporte === "asistencias" && (
+        <div
+          style={{
+            backgroundColor: "white",
+            borderRadius: "0.75rem",
+            padding: "1.5rem",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
+            border: "1px solid #e5e7eb",
+          }}
+        >
+          <h3 style={{ fontSize: "1.25rem", fontWeight: "600", color: "#1f2937", marginBottom: "1rem" }}>
+            Vista Previa: Estadísticas de Asistencias
+          </h3>
+
+          {estadisticasAsistencias.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>
+              No se encontraron datos de asistencias en el período seleccionado
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#f9fafb", borderBottom: "2px solid #e5e7eb" }}>
+                    <th style={{ padding: "0.75rem", textAlign: "left", fontWeight: "600" }}>Docente</th>
+                    <th style={{ padding: "0.75rem", textAlign: "center", fontWeight: "600" }}>Total</th>
+                    <th style={{ padding: "0.75rem", textAlign: "center", fontWeight: "600" }}>Presente</th>
+                    <th style={{ padding: "0.75rem", textAlign: "center", fontWeight: "600" }}>Retardo</th>
+                    <th style={{ padding: "0.75rem", textAlign: "center", fontWeight: "600" }}>Ausente</th>
+                    <th style={{ padding: "0.75rem", textAlign: "center", fontWeight: "600" }}>Justificado</th>
+                    <th style={{ padding: "0.75rem", textAlign: "center", fontWeight: "600" }}>Pendientes</th>
+                    <th style={{ padding: "0.75rem", textAlign: "center", fontWeight: "600" }}>% Presente</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {estadisticasAsistencias.map((docente) => (
+                    <tr
+                      key={docente.docente_id}
+                      style={{ borderBottom: "1px solid #e5e7eb" }}
+                    >
+                      <td style={{ padding: "0.75rem", fontWeight: "500" }}>
+                        {docente.nombre_completo}
+                      </td>
+                      <td style={{ padding: "0.75rem", textAlign: "center", fontWeight: "600" }}>
+                        {docente.total_asistencias}
+                      </td>
+                      <td style={{ padding: "0.75rem", textAlign: "center" }}>
                         <span
                           style={{
+                            display: "inline-block",
+                            padding: "0.25rem 0.5rem",
+                            borderRadius: "0.25rem",
+                            backgroundColor: "#dcfce7",
+                            color: "#166534",
                             fontSize: "0.75rem",
                             fontWeight: "600",
-                            color: bloque.disponible ? "#10b981" : "#ef4444",
                           }}
                         >
-                          {bloque.disponible ? "✓ Libre" : "✗ Ocupada"}
+                          {docente.presente}
                         </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td style={{ padding: "0.75rem", textAlign: "center" }}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "0.25rem 0.5rem",
+                            borderRadius: "0.25rem",
+                            backgroundColor: "#fef3c7",
+                            color: "#92400e",
+                            fontSize: "0.75rem",
+                            fontWeight: "600",
+                          }}
+                        >
+                          {docente.retardo}
+                        </span>
+                      </td>
+                      <td style={{ padding: "0.75rem", textAlign: "center" }}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "0.25rem 0.5rem",
+                            borderRadius: "0.25rem",
+                            backgroundColor: "#fee2e2",
+                            color: "#991b1b",
+                            fontSize: "0.75rem",
+                            fontWeight: "600",
+                          }}
+                        >
+                          {docente.ausente}
+                        </span>
+                      </td>
+                      <td style={{ padding: "0.75rem", textAlign: "center" }}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "0.25rem 0.5rem",
+                            borderRadius: "0.25rem",
+                            backgroundColor: "#dbeafe",
+                            color: "#1e40af",
+                            fontSize: "0.75rem",
+                            fontWeight: "600",
+                          }}
+                        >
+                          {docente.justificado}
+                        </span>
+                      </td>
+                      <td style={{ padding: "0.75rem", textAlign: "center" }}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            padding: "0.25rem 0.5rem",
+                            borderRadius: "0.25rem",
+                            backgroundColor: "#fed7aa",
+                            color: "#9a3412",
+                            fontSize: "0.75rem",
+                            fontWeight: "600",
+                          }}
+                        >
+                          {docente.pendientes_validacion}
+                        </span>
+                      </td>
+                      <td style={{ padding: "0.75rem", textAlign: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}>
+                          <div
+                            style={{
+                              width: "60px",
+                              height: "8px",
+                              backgroundColor: "#e5e7eb",
+                              borderRadius: "9999px",
+                              overflow: "hidden",
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: `${docente.porcentaje_presente}%`,
+                                height: "100%",
+                                backgroundColor: "#10b981",
+                                transition: "width 0.3s",
+                              }}
+                            />
+                          </div>
+                          <span style={{ fontWeight: "600", fontSize: "0.875rem" }}>
+                            {docente.porcentaje_presente}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
