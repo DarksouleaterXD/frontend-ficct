@@ -129,24 +129,8 @@ export default function AsistenciasPage() {
   // FUNCIONES
   // ============================================
 
-  // Función centralizada para obtener la hora actual (real o simulada)
-  const obtenerHoraActual = (): Date => {
-    const ahora = new Date();
-    
-    // ===== MODO PRUEBA: Descomentar UNA línea para simular una hora específica =====
-    // ahora.setHours(7, 0, 0); // Simular las 07:00
-    // ahora.setHours(6, 45, 0); // Simular las 06:45 (dentro de ventana para clase de 07:00)
-    // ahora.setHours(11, 15, 0); // Simular las 11:15 (dentro de ventana para clase de 11:30)
-    // ahora.setHours(7, 25, 0); // Simular las 07:25 (fuera de ventana para clase de 07:00)
-    // ahora.setHours(11, 5, 0); // Simular las 11:05 (dentro de ventana para clase de 11:30)
-    // ahora.setHours(11, 55, 0); // Simular las 11:55 (fuera de ventana para clase de 11:30)
-    // ================================================================================
-    
-    return ahora;
-  };
-
   const actualizarFechaHora = () => {
-    const ahora = obtenerHoraActual();
+    const ahora = new Date();
     
     setFechaActual(
       ahora.toLocaleDateString("es-ES", {
@@ -195,7 +179,7 @@ export default function AsistenciasPage() {
 
   // Función para verificar si estamos dentro de la ventana horaria
   const verificarVentanaHoraria = (horaInicio: string, horaFin: string): boolean => {
-    const ahora = obtenerHoraActual();
+    const ahora = new Date();
     const horaActual = ahora.getHours() * 60 + ahora.getMinutes();
     
     // Parsear hora de inicio (formato puede ser HH:MM o timestamp)
