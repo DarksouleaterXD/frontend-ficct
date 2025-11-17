@@ -74,6 +74,7 @@ export default function Sidebar() {
         { label: "Carreras", href: "/private/admin/carreras", icon: <Award size={20} /> },
         { label: "Usuarios", href: "/private/admin/usuarios", icon: <UserCog size={20} /> },
         { label: "Roles", href: "/private/admin/roles", icon: <Shield size={20} /> },
+        { label: "Validar Asistencias", href: "/private/admin/asistencia", icon: <CheckSquare size={20} /> },
         { label: "Reportes", href: "/private/admin/reportes", icon: <FileText size={20} /> },
         { label: "Bitácora", href: "/private/admin/bitacora", icon: <ClipboardList size={20} /> }
       );
