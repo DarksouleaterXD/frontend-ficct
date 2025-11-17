@@ -15,6 +15,13 @@ interface Carrera {
   sigla: string;
 }
 
+interface Materia {
+  id: number;
+  nombre: string;
+  codigo: string;
+  sigla: string;
+}
+
 interface Docente {
   id: number;
   persona: {
@@ -81,14 +88,14 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 export default function ReportesPage() {
   const [tipoReporte, setTipoReporte] = useState<"horarios" | "aulas" | "asistencias">("horarios");
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
-  const [carreras, setCarreras] = useState<Carrera[]>([]);
+  const [materias, setMaterias] = useState<Materia[]>([]);
   const [docentes, setDocentes] = useState<Docente[]>([]);
   const [aulasLista, setAulasLista] = useState<Aula[]>([]);
   const [bloquesHorarios, setBloquesHorarios] = useState<BloqueHorario[]>([]);
   
   // Filtros
   const [selectedPeriodo, setSelectedPeriodo] = useState("");
-  const [selectedCarrera, setSelectedCarrera] = useState("");
+  const [selectedMateria, setSelectedMateria] = useState("");
   const [selectedDocente, setSelectedDocente] = useState("");
   const [selectedDia, setSelectedDia] = useState("");
   const [selectedAula, setSelectedAula] = useState("");
@@ -122,11 +129,11 @@ export default function ReportesPage() {
   const fetchCatalogos = async () => {
     const token = localStorage.getItem("token");
     try {
-      const [periodosRes, carrerasRes, docentesRes, aulasRes, bloquesRes] = await Promise.all([
+      const [periodosRes, materiasRes, docentesRes, aulasRes, bloquesRes] = await Promise.all([
         fetch(`${API_URL}/periodos?per_page=999`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch(`${API_URL}/carreras?per_page=999`, {
+        fetch(`${API_URL}/materias?per_page=999`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(`${API_URL}/docentes?per_page=999`, {
@@ -147,9 +154,9 @@ export default function ReportesPage() {
         if (vigente) setSelectedPeriodo(vigente.id.toString());
       }
 
-      if (carrerasRes.ok) {
-        const data = await carrerasRes.json();
-        setCarreras(data.data || []);
+      if (materiasRes.ok) {
+        const data = await materiasRes.json();
+        setMaterias(data.data || []);
       }
 
       if (docentesRes.ok) {
@@ -200,7 +207,7 @@ export default function ReportesPage() {
       if (tipoReporte === "horarios") {
         const params = new URLSearchParams({
           periodo_id: selectedPeriodo,
-          ...(selectedCarrera && { carrera_id: selectedCarrera }),
+          ...(selectedMateria && { materia_id: selectedMateria }),
           ...(selectedDocente && { docente_id: selectedDocente }),
         });
 
@@ -285,7 +292,7 @@ export default function ReportesPage() {
       if (tipoReporte === "horarios") {
         const params = new URLSearchParams({
           periodo_id: selectedPeriodo,
-          ...(selectedCarrera && { carrera_id: selectedCarrera }),
+          ...(selectedMateria && { materia_id: selectedMateria }),
           ...(selectedDocente && { docente_id: selectedDocente }),
         });
         endpoint = `${API_URL}/reportes/horarios-semanales/pdf?${params}`;
@@ -344,7 +351,7 @@ export default function ReportesPage() {
       if (tipoReporte === "horarios") {
         const params = new URLSearchParams({
           periodo_id: selectedPeriodo,
-          ...(selectedCarrera && { carrera_id: selectedCarrera }),
+          ...(selectedMateria && { materia_id: selectedMateria }),
           ...(selectedDocente && { docente_id: selectedDocente }),
         });
         endpoint = `${API_URL}/reportes/horarios-semanales/excel?${params}`;
@@ -455,7 +462,7 @@ export default function ReportesPage() {
               setTipoReporte("aulas");
               setPrevisualizando(false);
               setAulas([]);
-              setSelectedCarrera("");
+              setSelectedMateria("");
               setSelectedDocente("");
             }}
             style={{
@@ -561,15 +568,15 @@ export default function ReportesPage() {
             </div>
           )}
 
-          {/* Carrera - Solo para Horarios */}
+          {/* Materia - Solo para Horarios */}
           {tipoReporte === "horarios" && (
             <div>
               <label style={{ display: "block", marginBottom: "0.5rem", fontWeight: "500", color: "#374151" }}>
-                Carrera (Opcional)
+                Materia (Opcional)
               </label>
               <select
-                value={selectedCarrera}
-                onChange={(e) => setSelectedCarrera(e.target.value)}
+                value={selectedMateria}
+                onChange={(e) => setSelectedMateria(e.target.value)}
                 style={{
                   width: "100%",
                   padding: "0.75rem",
@@ -578,10 +585,10 @@ export default function ReportesPage() {
                   fontSize: "1rem",
                 }}
               >
-                <option value="">Todas las carreras</option>
-                {carreras.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.nombre}
+                <option value="">Todas las materias</option>
+                {materias.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.nombre} ({m.codigo})
                   </option>
                 ))}
               </select>
