@@ -25,6 +25,7 @@ import {
   PieChart,
   Activity,
   FileSpreadsheet,
+  ChevronDown,
 } from "lucide-react";
 
 // ============================================
@@ -371,6 +372,7 @@ export default function ValidarAsistenciasAdminPage() {
   // ============================================
 
   return (
+    <>
     <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -851,140 +853,173 @@ export default function ValidarAsistenciasAdminPage() {
               {asistencias.map((asistencia) => (
                 <div
                   key={asistencia.id}
-                  className={`bg-white rounded border hover:shadow-md transition-shadow ${
-                    seleccionados.includes(asistencia.id) ? "border-blue-500" : "border-gray-300"
+                  className={`bg-white rounded-xl border-2 hover:shadow-xl transition-all duration-200 overflow-hidden ${
+                    seleccionados.includes(asistencia.id) ? "border-blue-500 shadow-lg" : "border-gray-200"
                   }`}
                 >
-                  <div className="p-4">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-start gap-3 flex-1">
+                  {/* Header Moderno */}
+                  <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 px-6 py-4 border-b border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 flex-1">
                         {modoSeleccion && (
                           <input
                             type="checkbox"
                             checked={seleccionados.includes(asistencia.id)}
                             onChange={() => toggleSeleccion(asistencia.id)}
-                            className="w-5 h-5 mt-1 cursor-pointer"
+                            className="w-5 h-5 cursor-pointer accent-blue-600 rounded"
                           />
                         )}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className="bg-blue-100 p-2 rounded">
-                              <User className="w-5 h-5 text-blue-600" />
-                            </div>
-                            <div>
-                              <h3 className="text-lg font-bold text-gray-900">{asistencia.docente}</h3>
-                              <div className="flex items-center gap-3 text-sm text-gray-600 mt-1">
-                                <div className="flex items-center gap-1">
-                                  <BookOpen className="w-4 h-4" />
-                                  {asistencia.materia}
-                                </div>
-                                <span className="text-gray-400">•</span>
-                                <span>{asistencia.grupo}</span>
-                                <span className="text-gray-400">•</span>
-                                <span className="text-blue-600 font-semibold">{asistencia.carrera}</span>
-                              </div>
-                            </div>
+                        <div className="flex items-center gap-3">
+                          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-xl shadow-lg">
+                            <User className="w-6 h-6 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="text-xl font-bold text-gray-900">{asistencia.docente}</h3>
+                            <p className="text-sm text-gray-600 font-medium mt-0.5">
+                              {asistencia.grupo} • {asistencia.carrera}
+                            </p>
                           </div>
                         </div>
                       </div>
-                      <span
-                        className={`inline-flex items-center gap-2 px-3 py-1 rounded text-sm font-medium border ${getEstadoColor(
-                          asistencia.estado
-                        )}`}
-                      >
-                        {getEstadoIcon(asistencia.estado)}
-                        {asistencia.estado.toUpperCase()}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4 p-3 bg-gray-50 rounded border border-gray-200">
-                      <div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-1 font-semibold">
-                          <Calendar className="w-4 h-4" />
-                          Fecha
-                        </div>
-                        <p className="font-bold text-gray-900">{formatearFecha(asistencia.fecha)}</p>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-1 font-semibold">
-                          <Clock className="w-4 h-4" />
-                          Hora Clase
-                        </div>
-                        <p className="font-bold text-gray-900">{asistencia.hora_clase}</p>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-1 font-semibold">
-                          <Clock className="w-4 h-4" />
-                          Hora Marcado
-                        </div>
-                        <p
-                          className={`font-bold ${
-                            asistencia.es_retardo ? "text-yellow-600" : "text-green-600"
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-semibold text-gray-600">
+                          {new Date(asistencia.fecha).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '')}
+                        </span>
+                        {asistencia.es_retardo && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-yellow-100 to-amber-100 border-2 border-yellow-400 rounded-lg text-xs font-bold text-yellow-800 shadow-sm">
+                            <AlertTriangle className="w-4 h-4" />
+                            RETARDO
+                          </span>
+                        )}
+                        <span
+                          className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold shadow-md ${
+                            getEstadoColor(asistencia.estado)
                           }`}
                         >
-                          {asistencia.hora_marcado}
-                          {asistencia.es_retardo && " ⏰"}
-                        </p>
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-1 font-semibold">
-                          <FileText className="w-4 h-4" />
-                          Método
-                        </div>
-                        <span className="inline-flex items-center px-3 py-1 rounded-lg bg-purple-100 text-purple-700 text-sm font-bold border border-purple-300">
-                          {asistencia.metodo.toUpperCase()}
+                          {getEstadoIcon(asistencia.estado)}
+                          {asistencia.estado.toUpperCase()}
                         </span>
                       </div>
-                      <div>
-                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-1 font-semibold">
-                          <User className="w-4 h-4" />
-                          Estado
+                    </div>
+                  </div>
+
+                  {/* Contenido Principal */}
+                  <div className="p-6">
+                    {/* Materia Destacada */}
+                    <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-5 mb-5 border border-gray-200">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-2 rounded-lg shadow-md">
+                          <BookOpen className="w-5 h-5 text-white" />
                         </div>
-                        {asistencia.validado_por ? (
-                          <p className="text-sm text-green-600 font-semibold">✅ Validado</p>
-                        ) : (
-                          <p className="text-sm text-orange-600 font-semibold">⏳ Pendiente</p>
-                        )}
+                        <h4 className="text-lg font-bold text-gray-900">{asistencia.materia}</h4>
+                      </div>
+
+                      {/* Grid de Información */}
+                      <div className="grid grid-cols-3 gap-4">
+                        {/* Fecha */}
+                        <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <Calendar className="w-4 h-4 text-blue-600" />
+                            <span className="text-xs font-bold text-gray-500 uppercase">Fecha</span>
+                          </div>
+                          <p className="font-bold text-gray-900">{formatearFecha(asistencia.fecha)}</p>
+                        </div>
+
+                        {/* Hora Clase */}
+                        <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <Clock className="w-4 h-4 text-blue-600" />
+                            <span className="text-xs font-bold text-gray-500 uppercase">Hora Clase</span>
+                          </div>
+                          <p className="font-mono font-bold text-gray-900 text-lg">{asistencia.hora_clase}</p>
+                        </div>
+
+                        {/* Hora Marcado */}
+                        <div className="bg-white rounded-lg p-3 shadow-sm border border-gray-200">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <Clock className="w-4 h-4 text-blue-600" />
+                            <span className="text-xs font-bold text-gray-500 uppercase">Marcado</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <p className={`font-mono font-bold text-lg ${
+                              asistencia.es_retardo ? "text-yellow-600" : "text-green-600"
+                            }`}>
+                              {asistencia.hora_marcado}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Método y Validación */}
+                      <div className="flex items-center gap-4 mt-4 pt-4 border-t border-gray-200">
+                        <div className="flex items-center gap-2">
+                          <FileText className="w-4 h-4 text-purple-600" />
+                          <span className="text-sm font-semibold text-gray-600">Método:</span>
+                          <span className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-100 to-purple-200 text-purple-700 text-sm font-bold border border-purple-300 shadow-sm">
+                            {asistencia.metodo === 'formulario' ? '📝 FORMULARIO' : '📱 QR'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Activity className="w-4 h-4 text-gray-600" />
+                          <span className="text-sm font-semibold text-gray-600">Validación:</span>
+                          {asistencia.validado_por ? (
+                            <span className="inline-flex items-center gap-1.5 text-sm text-green-700 font-bold bg-gradient-to-r from-green-100 to-emerald-100 px-3 py-1.5 rounded-lg border border-green-300 shadow-sm">
+                              <CheckCircle className="w-4 h-4" />
+                              Validado
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-sm text-orange-700 font-bold bg-gradient-to-r from-orange-100 to-amber-100 px-3 py-1.5 rounded-lg border border-orange-300 shadow-sm">
+                              <AlertTriangle className="w-4 h-4" />
+                              Pendiente
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
+                    {/* Observación del Docente */}
                     {asistencia.observacion && (
-                      <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded">
-                        <p className="text-sm font-bold text-gray-700 mb-2">
-                          💬 Observación del Docente:
-                        </p>
-                        <p className="text-gray-900">{asistencia.observacion}</p>
+                      <div className="mb-5 p-5 bg-gradient-to-br from-amber-50 via-orange-50 to-amber-50 border border-orange-200 rounded-xl shadow-sm">
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="bg-gradient-to-br from-orange-500 to-amber-600 p-2 rounded-lg shadow-md">
+                            <FileText className="w-4 h-4 text-white" />
+                          </div>
+                          <p className="text-sm font-bold text-gray-800 uppercase">Observación del Docente</p>
+                        </div>
+                        <p className="text-gray-900 italic leading-relaxed bg-white p-4 rounded-lg border border-orange-100">&ldquo;{asistencia.observacion}&rdquo;</p>
                       </div>
                     )}
 
+                    {/* Evidencia Adjunta */}
                     {asistencia.evidencia_url && (
-                      <div className="mb-4">
+                      <div className="mb-5">
                         <a
                           href={`${process.env.NEXT_PUBLIC_API_URL}/storage/${asistencia.evidencia_url}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 px-3 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors font-medium border border-gray-300"
+                          className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all font-bold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-5 h-5" />
                           Ver Evidencia Adjunta
                         </a>
                       </div>
                     )}
 
+                    {/* Botones de Acción */}
                     {!modoSeleccion && (
-                      <div className="flex gap-2 pt-4 border-t border-gray-200">
+                      <div className="flex gap-3 pt-5 border-t-2 border-gray-200">
                         <button
                           onClick={() => abrirModalValidar(asistencia, "aprobar")}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-medium transition-colors"
+                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:from-green-600 hover:to-emerald-700 font-bold transition-all shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
                         >
-                          <ThumbsUp className="w-4 h-4" />
+                          <ThumbsUp className="w-5 h-5" />
                           Aprobar
                         </button>
                         <button
                           onClick={() => abrirModalValidar(asistencia, "rechazar")}
-                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 font-medium transition-colors"
+                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl hover:from-red-600 hover:to-rose-700 font-bold transition-all shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
                         >
-                          <ThumbsDown className="w-4 h-4" />
+                          <ThumbsDown className="w-5 h-5" />
                           Rechazar
                         </button>
                       </div>
@@ -1085,132 +1120,185 @@ export default function ValidarAsistenciasAdminPage() {
           </div>
         </div>
       )}
+    </div>
 
-      {/* Modal de Validación */}
+      {/* Modal de Validación Mejorado */}
       {modalAbierto && asistenciaSeleccionada && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-md">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
             <div
-              className={`p-6 border-b-2 border-gray-200 ${
-                accionValidacion === "aprobar" ? "bg-gradient-to-r from-green-50 to-emerald-50" : "bg-gradient-to-r from-red-50 to-rose-50"
+              className={`p-8 border-b-2 ${
+                accionValidacion === "aprobar" 
+                  ? "bg-gradient-to-r from-green-50 via-emerald-50 to-teal-50 border-green-300" 
+                  : "bg-gradient-to-r from-red-50 via-rose-50 to-pink-50 border-red-300"
               }`}
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-5">
                   <div
-                    className={`p-4 rounded-xl ${
-                      accionValidacion === "aprobar" ? "bg-green-100" : "bg-red-100"
+                    className={`p-4 rounded-2xl shadow-lg ${
+                      accionValidacion === "aprobar" 
+                        ? "bg-gradient-to-br from-green-500 to-emerald-600" 
+                        : "bg-gradient-to-br from-red-500 to-rose-600"
                     }`}
                   >
                     {accionValidacion === "aprobar" ? (
-                      <ThumbsUp className="w-8 h-8 text-green-600" />
+                      <ThumbsUp className="w-10 h-10 text-white" />
                     ) : (
-                      <ThumbsDown className="w-8 h-8 text-red-600" />
+                      <ThumbsDown className="w-10 h-10 text-white" />
                     )}
                   </div>
                   <div>
-                    <h2 className="text-3xl font-bold text-gray-900">
-                      {accionValidacion === "aprobar" ? "✅ Aprobar Asistencia" : "❌ Rechazar Asistencia"}
+                    <h2 className="text-3xl font-bold text-gray-900 mb-1">
+                      {accionValidacion === "aprobar" ? "Aprobar Asistencia" : "Rechazar Asistencia"}
                     </h2>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Confirma la {accionValidacion === "aprobar" ? "aprobación" : "rechazo"} de esta asistencia
+                    <p className="text-base text-gray-600 font-medium">
+                      {accionValidacion === "aprobar" 
+                        ? "Confirma que esta asistencia es válida y debe ser aprobada" 
+                        : "Indica el motivo del rechazo de esta asistencia"}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={cerrarModal}
                   disabled={enviando}
-                  className="text-gray-400 hover:text-gray-600 disabled:opacity-50 p-2 hover:bg-gray-100 rounded-lg transition-all"
+                  className="text-gray-400 hover:text-gray-700 disabled:opacity-50 p-2.5 hover:bg-white/50 rounded-xl transition-all transform hover:scale-110 active:scale-95"
                 >
-                  <X className="w-7 h-7" />
+                  <X className="w-8 h-8" />
                 </button>
               </div>
             </div>
 
             <div className="p-8">
-              <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl p-6 mb-6 border-2 border-gray-200">
-                <h3 className="font-bold text-gray-900 mb-4 text-xl flex items-center gap-2">
-                  <FileText className="w-6 h-6 text-blue-600" />
-                  Detalles de la Asistencia
+              {/* Información Principal */}
+              <div className="bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl p-6 mb-6 border-2 border-blue-200 shadow-md">
+                <h3 className="font-bold text-gray-900 mb-5 text-xl flex items-center gap-3">
+                  <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2.5 rounded-lg shadow-md">
+                    <FileText className="w-6 h-6 text-white" />
+                  </div>
+                  Información de la Asistencia
                 </h3>
                 
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1 font-semibold">Docente</p>
+                <div className="grid grid-cols-2 gap-5 mb-5">
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <User className="w-4 h-4 text-blue-600" />
+                      <p className="text-xs text-gray-600 font-bold uppercase">Docente</p>
+                    </div>
                     <p className="font-bold text-gray-900 text-lg">{asistenciaSeleccionada.docente}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1 font-semibold">Materia</p>
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <BookOpen className="w-4 h-4 text-blue-600" />
+                      <p className="text-xs text-gray-600 font-bold uppercase">Materia</p>
+                    </div>
                     <p className="font-bold text-gray-900 text-lg">{asistenciaSeleccionada.materia}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1 font-semibold">Grupo</p>
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Users className="w-4 h-4 text-blue-600" />
+                      <p className="text-xs text-gray-600 font-bold uppercase">Grupo</p>
+                    </div>
                     <p className="font-bold text-gray-900">{asistenciaSeleccionada.grupo}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1 font-semibold">Carrera</p>
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <BookOpen className="w-4 h-4 text-blue-600" />
+                      <p className="text-xs text-gray-600 font-bold uppercase">Carrera</p>
+                    </div>
                     <p className="font-bold text-blue-600">{asistenciaSeleccionada.carrera}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1 font-semibold">Fecha</p>
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Calendar className="w-4 h-4 text-blue-600" />
+                      <p className="text-xs text-gray-600 font-bold uppercase">Fecha</p>
+                    </div>
                     <p className="font-bold text-gray-900">
                       {formatearFechaCompleta(asistenciaSeleccionada.fecha)}
                     </p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1 font-semibold">Método</p>
-                    <span className="inline-flex items-center px-3 py-1 rounded-lg bg-purple-100 text-purple-700 text-sm font-bold border border-purple-300">
-                      {asistenciaSeleccionada.metodo.toUpperCase()}
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="w-4 h-4 text-blue-600" />
+                      <p className="text-xs text-gray-600 font-bold uppercase">Método</p>
+                    </div>
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-100 to-purple-200 text-purple-700 text-sm font-bold border-2 border-purple-300 shadow-sm">
+                      {asistenciaSeleccionada.metodo === 'formulario' ? '📝 FORMULARIO' : '📱 QR'}
                     </span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 pt-4 border-t-2 border-gray-200">
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1 font-semibold">Hora Clase</p>
-                    <p className="font-bold text-gray-900 text-lg">{asistenciaSeleccionada.hora_clase}</p>
+                <div className="grid grid-cols-3 gap-4 pt-5 border-t-2 border-blue-200">
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-4 h-4 text-blue-600" />
+                      <p className="text-xs text-gray-600 font-bold uppercase">Hora Clase</p>
+                    </div>
+                    <p className="font-bold text-gray-900 text-xl font-mono">{asistenciaSeleccionada.hora_clase}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1 font-semibold">Hora Marcado</p>
-                    <p
-                      className={`font-bold text-lg ${
-                        asistenciaSeleccionada.es_retardo ? "text-yellow-600" : "text-green-600"
-                      }`}
-                    >
-                      {asistenciaSeleccionada.hora_marcado}
-                      {asistenciaSeleccionada.es_retardo && " ⏰"}
-                    </p>
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className="w-4 h-4 text-blue-600" />
+                      <p className="text-xs text-gray-600 font-bold uppercase">Hora Marcado</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p
+                        className={`font-bold text-xl font-mono ${
+                          asistenciaSeleccionada.es_retardo ? "text-yellow-600" : "text-green-600"
+                        }`}
+                      >
+                        {asistenciaSeleccionada.hora_marcado}
+                      </p>
+                      {asistenciaSeleccionada.es_retardo && (
+                        <span className="px-2 py-1 bg-yellow-100 text-yellow-700 text-xs font-bold rounded border border-yellow-300">
+                          RETARDO
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600 mb-1 font-semibold">Estado</p>
+                  <div className="bg-white rounded-xl p-4 shadow-sm border border-blue-100">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Activity className="w-4 h-4 text-blue-600" />
+                      <p className="text-xs text-gray-600 font-bold uppercase">Estado</p>
+                    </div>
                     <span
-                      className={`inline-flex items-center gap-1 px-3 py-1 rounded-lg text-sm font-bold border-2 ${getEstadoColor(
+                      className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-bold border-2 shadow-sm ${getEstadoColor(
                         asistenciaSeleccionada.estado
                       )}`}
                     >
                       {getEstadoIcon(asistenciaSeleccionada.estado)}
-                      {asistenciaSeleccionada.estado}
+                      {asistenciaSeleccionada.estado.toUpperCase()}
                     </span>
                   </div>
                 </div>
 
                 {asistenciaSeleccionada.observacion && (
-                  <div className="pt-4 border-t-2 border-gray-200 mt-4">
-                    <p className="text-sm font-bold text-gray-700 mb-2">💬 Observación del Docente:</p>
-                    <p className="text-gray-900 bg-white p-4 rounded-lg border-2 border-gray-200">
-                      {asistenciaSeleccionada.observacion}
-                    </p>
+                  <div className="pt-5 border-t-2 border-blue-200 mt-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg shadow-md">
+                        <FileText className="w-4 h-4 text-white" />
+                      </div>
+                      <p className="text-sm font-bold text-gray-700 uppercase">Observación del Docente</p>
+                    </div>
+                    <div className="text-gray-900 bg-white p-5 rounded-xl border-2 border-blue-200 shadow-sm">
+                      <p className="italic leading-relaxed">&ldquo;{asistenciaSeleccionada.observacion}&rdquo;</p>
+                    </div>
                   </div>
                 )}
 
                 {asistenciaSeleccionada.evidencia_url && (
-                  <div className="pt-4 border-t-2 border-gray-200 mt-4">
-                    <p className="text-sm font-bold text-gray-700 mb-2">📎 Evidencia Adjunta:</p>
+                  <div className="pt-5 border-t-2 border-blue-200 mt-5">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg shadow-md">
+                        <Eye className="w-4 h-4 text-white" />
+                      </div>
+                      <p className="text-sm font-bold text-gray-700 uppercase">Evidencia Adjunta</p>
+                    </div>
                     <a
                       href={`${process.env.NEXT_PUBLIC_API_URL}/storage/${asistenciaSeleccionada.evidencia_url}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 rounded-lg hover:from-blue-200 hover:to-blue-300 transition-all font-bold border-2 border-blue-300"
+                      className="inline-flex items-center gap-2 px-6 py-3.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all font-bold shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95"
                     >
                       <Download className="w-5 h-5" />
                       Ver/Descargar Evidencia
@@ -1219,10 +1307,20 @@ export default function ValidarAsistenciasAdminPage() {
                 )}
               </div>
 
-              <div className="mb-6">
-                <label className="block text-sm font-bold text-gray-700 mb-3">
-                  Observación de Validación (Administrador)
-                  {accionValidacion === "rechazar" && <span className="text-red-600 ml-1">*</span>}
+              {/* Observación de Validación */}
+              <div className="mb-6 bg-gradient-to-br from-gray-50 to-slate-50 rounded-2xl p-6 border-2 border-gray-200 shadow-sm">
+                <label className="flex items-center gap-3 text-base font-bold text-gray-900 mb-4">
+                  <div className={`p-2 rounded-lg shadow-md ${
+                    accionValidacion === "aprobar" 
+                      ? "bg-gradient-to-br from-green-500 to-emerald-600" 
+                      : "bg-gradient-to-br from-red-500 to-rose-600"
+                  }`}>
+                    <FileText className="w-5 h-5 text-white" />
+                  </div>
+                  <span>
+                    Observación de Validación
+                    {accionValidacion === "rechazar" && <span className="text-red-600 ml-2">*Obligatorio</span>}
+                  </span>
                 </label>
                 <textarea
                   value={observacionValidacion}
@@ -1231,50 +1329,63 @@ export default function ValidarAsistenciasAdminPage() {
                   rows={4}
                   placeholder={
                     accionValidacion === "aprobar"
-                      ? "Opcional: Agrega comentarios adicionales..."
-                      : "Requerido: Explica detalladamente el motivo del rechazo..."
+                      ? "Opcional: Agrega comentarios adicionales sobre la aprobación..."
+                      : "Obligatorio: Explica detalladamente el motivo del rechazo de esta asistencia..."
                   }
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all"
+                  className={`w-full px-5 py-4 border-2 rounded-xl focus:ring-2 focus:ring-offset-2 resize-none transition-all font-medium bg-white shadow-sm ${
+                    accionValidacion === "rechazar" && !observacionValidacion
+                      ? "border-red-300 focus:border-red-500 focus:ring-red-500"
+                      : "border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                  }`}
                 />
-                <div className="flex items-center justify-between mt-2">
-                  <p className="text-xs text-gray-500 font-semibold">{observacionValidacion.length}/500 caracteres</p>
+                <div className="flex items-center justify-between mt-3">
+                  <p className="text-sm text-gray-600 font-semibold">
+                    <span className={observacionValidacion.length > 450 ? "text-orange-600" : ""}>
+                      {observacionValidacion.length}
+                    </span>
+                    /500 caracteres
+                  </p>
                   {accionValidacion === "rechazar" && !observacionValidacion && (
-                    <p className="text-xs text-red-600 font-bold">* Campo obligatorio para rechazos</p>
+                    <p className="text-sm text-red-600 font-bold flex items-center gap-1">
+                      <AlertTriangle className="w-4 h-4" />
+                      Campo obligatorio para rechazos
+                    </p>
                   )}
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              {/* Botones de Acción del Modal */}
+              <div className="flex gap-4">
                 <button
                   onClick={cerrarModal}
                   disabled={enviando}
-                  className="flex-1 px-6 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 disabled:bg-gray-100 disabled:cursor-not-allowed font-bold transition-all shadow-md"
+                  className="flex-1 px-8 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 hover:border-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed font-bold transition-all shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95"
                 >
-                  Cancelar
+                  <span className="text-lg">Cancelar</span>
                 </button>
                 <button
                   onClick={confirmarValidacion}
                   disabled={enviando || (accionValidacion === "rechazar" && !observacionValidacion)}
-                  className={`flex-1 px-6 py-4 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg ${
+                  className={`flex-1 px-8 py-4 text-white rounded-xl font-bold flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 ${
                     accionValidacion === "aprobar"
-                      ? "bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
-                      : "bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800"
-                  } disabled:bg-gray-400 disabled:cursor-not-allowed`}
+                      ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700"
+                      : "bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
+                  } disabled:bg-gray-400 disabled:cursor-not-allowed disabled:transform-none`}
                 >
                   {enviando ? (
                     <>
                       <Loader2 className="w-6 h-6 animate-spin" />
-                      Procesando...
+                      <span className="text-lg">Procesando...</span>
                     </>
                   ) : accionValidacion === "aprobar" ? (
                     <>
                       <ThumbsUp className="w-6 h-6" />
-                      Confirmar Aprobación
+                      <span className="text-lg">Confirmar Aprobación</span>
                     </>
                   ) : (
                     <>
                       <ThumbsDown className="w-6 h-6" />
-                      Confirmar Rechazo
+                      <span className="text-lg">Confirmar Rechazo</span>
                     </>
                   )}
                 </button>
@@ -1283,6 +1394,6 @@ export default function ValidarAsistenciasAdminPage() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
